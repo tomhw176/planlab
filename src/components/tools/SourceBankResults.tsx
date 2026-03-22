@@ -5,7 +5,7 @@ import type { ViewState } from "@/app/page";
 import {
   ArrowLeft, Loader2, CheckCircle2, AlertTriangle, Star, ExternalLink,
   ChevronDown, ChevronRight, Link2, Shield, ShieldAlert, ShieldCheck,
-  LinkIcon, Unlink, Search,
+  LinkIcon, Unlink, Search, FileText, Table2,
 } from "lucide-react";
 
 interface CandidateSource {
@@ -196,6 +196,100 @@ function SourceCard({ source, index }: { source: CandidateSource; index: number 
             </a>
           )}
         </div>
+      )}
+    </div>
+  );
+}
+
+function ExportButtons({ sourceBankId }: { sourceBankId: string }) {
+  const [exporting, setExporting] = useState<string | null>(null);
+  const [result, setResult] = useState<{ type: string; url: string } | null>(null);
+
+  const handleExport = async (type: "doc" | "sheet") => {
+    setExporting(type);
+    setResult(null);
+
+    try {
+      // Check auth
+      const authRes = await fetch("/api/auth/google?action=status");
+      const authData = await authRes.json();
+
+      if (!authData.authenticated) {
+        // Redirect to Google auth
+        const urlRes = await fetch("/api/auth/google");
+        const urlData = await urlRes.json();
+        if (urlData.url) {
+          window.location.href = urlData.url;
+          return;
+        }
+      }
+
+      const endpoint = type === "doc"
+        ? `/api/export/source-bank-doc/${sourceBankId}`
+        : `/api/export/source-bank-sheet/${sourceBankId}`;
+
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Export failed");
+      }
+
+      const data = await res.json();
+      setResult({ type, url: data.url });
+
+      // Open in new tab
+      window.open(data.url, "_blank");
+    } catch (err) {
+      console.error("Export error:", err);
+    } finally {
+      setExporting(null);
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-3 mb-6">
+      <span className="text-xs font-semibold text-muted uppercase">Export:</span>
+      <button
+        onClick={() => handleExport("doc")}
+        disabled={!!exporting}
+        className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg border border-border hover:border-primary/30 hover:bg-primary/5 transition-colors disabled:opacity-50"
+      >
+        {exporting === "doc" ? (
+          <Loader2 size={14} className="animate-spin" />
+        ) : (
+          <FileText size={14} />
+        )}
+        Student Source Packet
+        <span className="text-[10px] text-muted ml-1">Google Doc</span>
+      </button>
+      <button
+        onClick={() => handleExport("sheet")}
+        disabled={!!exporting}
+        className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg border border-border hover:border-primary/30 hover:bg-primary/5 transition-colors disabled:opacity-50"
+      >
+        {exporting === "sheet" ? (
+          <Loader2 size={14} className="animate-spin" />
+        ) : (
+          <Table2 size={14} />
+        )}
+        Teacher Curation Table
+        <span className="text-[10px] text-muted ml-1">Google Sheet</span>
+      </button>
+      {result && (
+        <a
+          href={result.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs text-primary hover:underline flex items-center gap-1"
+        >
+          <ExternalLink size={10} />
+          Open {result.type === "doc" ? "Doc" : "Sheet"}
+        </a>
       )}
     </div>
   );
@@ -420,6 +514,11 @@ export function SourceBankResults({ sourceBankId, onNavigate }: SourceBankResult
           <span className="font-medium">Source curation complete.</span>
           <span>Always verify sources and links before using in class.</span>
         </div>
+      )}
+
+      {/* Export Buttons */}
+      {data.status === "completed" && recommended.length > 0 && (
+        <ExportButtons sourceBankId={data.id} />
       )}
 
       {/* Recommended Sources */}

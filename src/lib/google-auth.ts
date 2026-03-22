@@ -51,6 +51,7 @@ export function getAuthUrl(returnTo?: string): string {
     scope: [
       "https://www.googleapis.com/auth/documents",
       "https://www.googleapis.com/auth/presentations",
+      "https://www.googleapis.com/auth/spreadsheets",
       "https://www.googleapis.com/auth/drive.file",
     ],
     state: returnTo || "",
