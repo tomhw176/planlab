@@ -1,64 +1,237 @@
-import Image from "next/image";
+"use client";
+
+import { useEffect, useState } from "react";
+import { Sidebar } from "@/components/Sidebar";
+import { CourseView } from "@/components/CourseView";
+import { LessonPage } from "@/components/lesson/LessonPage";
+import { ChatPanel } from "@/components/ChatPanel";
+import { PanelRightOpen, PanelRightClose } from "lucide-react";
+
+export type ViewState =
+  | { type: "home" }
+  | { type: "course"; courseId: string }
+  | { type: "lesson"; lessonId: string };
+
+export interface Course {
+  id: string;
+  title: string;
+  subject: string;
+  gradeLevel: string;
+  description: string;
+  color: string;
+  _count?: { units: number };
+  units?: Unit[];
+}
+
+export interface Unit {
+  id: string;
+  title: string;
+  description: string;
+  bigIdea: string;
+  order: number;
+  status: string;
+  monthStart: number | null;
+  weekStart: number | null;
+  monthEnd: number | null;
+  weekEnd: number | null;
+  courseId: string | null;
+  lessons?: Lesson[];
+  tags?: Tag[];
+}
+
+export interface CurriculumConnection {
+  bigIdea: string;
+  competencyFocus: string;
+  contentConnection: string;
+}
+
+export interface Lesson {
+  id: string;
+  title: string;
+  order: number;
+  status: string;
+  templateId: string | null;
+  creationMode: string;
+  duration: number;
+  curriculumConnection: CurriculumConnection;
+  learningTarget: string;
+  lessonPurpose: string;
+  hook: string;
+  learningObjectives: string;
+  materialsNeeded: string;
+  activities: Activity[];
+  closure: string;
+  assessment: string;
+  scaffolds: string;
+  extension: string;
+  keyVocabulary: string;
+  transferableConcepts: string;
+  differentiation: string;
+  notes: string;
+  unitId: string | null;
+  resources?: Resource[];
+  tags?: Tag[];
+}
+
+export interface Activity {
+  name: string;
+  duration: string;
+  description: string;
+}
+
+export interface Resource {
+  id: string;
+  title: string;
+  type: string;
+  content: Record<string, unknown>;
+  status: string;
+  lessonId: string | null;
+}
+
+export interface Tag {
+  id: string;
+  category: string;
+  value: string;
+}
 
 export default function Home() {
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [view, setView] = useState<ViewState>({ type: "home" });
+  const [chatOpen, setChatOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const refresh = () => setRefreshKey((k) => k + 1);
+
+  useEffect(() => {
+    fetch("/api/courses")
+      .then((r) => r.json())
+      .then(setCourses)
+      .catch(console.error);
+  }, [refreshKey]);
+
+  // After Google OAuth redirect, navigate back to the lesson that initiated the export
+  useEffect(() => {
+    try {
+      const pending = localStorage.getItem("planlab_pending_google_export");
+      if (pending) {
+        const { lessonId } = JSON.parse(pending);
+        if (lessonId) {
+          // Don't remove from localStorage yet — ResourcesPanel will handle that
+          setView({ type: "lesson", lessonId });
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const chatContext =
+    view.type === "course"
+      ? { courseId: view.courseId }
+      : view.type === "lesson"
+        ? { lessonId: view.lessonId }
+        : {};
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+    <div className="flex h-full">
+      <Sidebar
+        courses={courses}
+        view={view}
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+        onNavigate={setView}
+        onRefresh={refresh}
+      />
+
+      <main className="flex-1 flex overflow-hidden">
+        <div className="flex-1 overflow-y-auto">
+          {view.type === "home" && (
+            <div className="p-8 max-w-4xl mx-auto">
+              <h1 className="text-3xl font-bold mb-2">Welcome to PlanLab</h1>
+              <p className="text-muted mb-8">
+                Your curriculum planning workspace. Select a course from the
+                sidebar or create a new one to get started.
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {courses.map((course) => (
+                  <button
+                    key={course.id}
+                    onClick={() =>
+                      setView({ type: "course", courseId: course.id })
+                    }
+                    className="text-left p-5 rounded-xl border border-border bg-surface hover:shadow-md transition-all group"
+                  >
+                    <div
+                      className="w-3 h-3 rounded-full mb-3"
+                      style={{ backgroundColor: course.color }}
+                    />
+                    <h3 className="font-semibold text-lg group-hover:text-primary transition-colors">
+                      {course.title}
+                    </h3>
+                    <p className="text-sm text-muted mt-1">
+                      {course.subject}{" "}
+                      {course.gradeLevel && `· ${course.gradeLevel}`}
+                    </p>
+                    <p className="text-xs text-muted mt-2">
+                      {course._count?.units ?? 0} unit
+                      {(course._count?.units ?? 0) !== 1 ? "s" : ""}
+                    </p>
+                  </button>
+                ))}
+              </div>
+
+              {courses.length === 0 && (
+                <div className="text-center py-16 text-muted">
+                  <p className="text-lg mb-2">No courses yet</p>
+                  <p className="text-sm">
+                    Click &quot;New Course&quot; in the sidebar to create your
+                    first course.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {view.type === "course" && (
+            <CourseView
+              courseId={view.courseId}
+              onNavigate={setView}
+              onRefresh={refresh}
+              key={view.courseId}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+          )}
+
+          {view.type === "lesson" && (
+            <LessonPage
+              lessonId={view.lessonId}
+              onNavigate={setView}
+              onRefresh={refresh}
+              key={view.lessonId}
+            />
+          )}
         </div>
+
+        {view.type === "course" && (
+          <>
+            <button
+              onClick={() => setChatOpen(!chatOpen)}
+              className="fixed bottom-6 right-6 z-50 bg-primary text-white p-3 rounded-full shadow-lg hover:bg-primary-dark transition-colors"
+              title={chatOpen ? "Close AI Chat" : "Open AI Chat"}
+            >
+              {chatOpen ? (
+                <PanelRightClose size={20} />
+              ) : (
+                <PanelRightOpen size={20} />
+              )}
+            </button>
+
+            {chatOpen && (
+              <ChatPanel context={chatContext} onRefresh={refresh} />
+            )}
+          </>
+        )}
       </main>
     </div>
   );

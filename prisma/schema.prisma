@@ -1,0 +1,144 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Course {
+  id             String   @id @default(cuid())
+  title          String
+  subject        String   @default("Social Studies")
+  gradeLevel     String   @default("")
+  description    String   @default("")
+  color          String   @default("#6366f1")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  courseDefaults Json     @default("{\"numStudents\": 30, \"lessonDuration\": 60}")
+  chats          Chat[]
+  units          Unit[]
+}
+
+model Unit {
+  id          String   @id @default(cuid())
+  title       String
+  description String   @default("")
+  bigIdea     String   @default("")
+  order       Int      @default(0)
+  status      String   @default("draft")
+  monthStart  Int?
+  weekStart   Int?
+  monthEnd    Int?
+  weekEnd     Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  courseId    String?
+  chats       Chat[]
+  lessons     Lesson[]
+  course      Course?  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  tags        Tag[]    @relation("TagToUnit")
+}
+
+model Lesson {
+  id                   String     @id @default(cuid())
+  title                String
+  order                Int        @default(0)
+  status               String     @default("draft")
+  templateId           String?
+  hook                 String     @default("")
+  learningObjectives   String     @default("")
+  keyVocabulary        String     @default("")
+  transferableConcepts String     @default("")
+  activities           Json       @default("[]")
+  materialsNeeded      String     @default("")
+  differentiation      String     @default("")
+  assessment           String     @default("")
+  closure              String     @default("")
+  notes                String     @default("")
+  createdAt            DateTime   @default(now())
+  updatedAt            DateTime   @updatedAt
+  unitId               String?
+  creationMode         String     @default("scratch")
+  duration             Int        @default(60)
+  extension            String     @default("")
+  learningTarget       String     @default("")
+  lessonPurpose        String     @default("")
+  scaffolds            String     @default("")
+  curriculumConnection Json       @default("{\"bigIdea\": \"\", \"competencyFocus\": \"\", \"contentConnection\": \"\"}")
+  chats                Chat[]
+  unit                 Unit?      @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  resources            Resource[]
+  tags                 Tag[]      @relation("LessonToTag")
+}
+
+model Resource {
+  id        String   @id @default(cuid())
+  title     String
+  type      String
+  content   Json     @default("{}")
+  status    String   @default("draft")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  lessonId  String?
+  unitId    String?
+  chats     Chat[]
+  lesson    Lesson?  @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+}
+
+model LessonTemplate {
+  id             String   @id @default(cuid())
+  name           String
+  description    String   @default("")
+  structure      Json     @default("{}")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  promptTemplate String   @default("")
+  requiredFields Json     @default("[]")
+}
+
+model Tag {
+  id       String   @id @default(cuid())
+  category String
+  value    String
+  lessons  Lesson[] @relation("LessonToTag")
+  units    Unit[]   @relation("TagToUnit")
+
+  @@unique([category, value])
+}
+
+model CurriculumStandard {
+  id          String @id @default(cuid())
+  subject     String
+  gradeLevel  String
+  category    String
+  code        String @default("")
+  description String
+
+  @@index([subject, gradeLevel])
+}
+
+model Chat {
+  id         String        @id @default(cuid())
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  courseId   String?
+  unitId     String?
+  lessonId   String?
+  resourceId String?
+  course     Course?       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lesson     Lesson?       @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  resource   Resource?     @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  unit       Unit?         @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  messages   ChatMessage[]
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  role      String
+  content   String
+  createdAt DateTime @default(now())
+  chatId    String
+  chat      Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
+}
