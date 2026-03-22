@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { ViewState } from "@/app/page";
-import { ArrowLeft, Sparkles, Loader2, X, Plus } from "lucide-react";
+import { ArrowLeft, Sparkles, Loader2, X, Plus, Link2 } from "lucide-react";
 
 interface SourceFindingFormProps {
   onNavigate: (view: ViewState) => void;
@@ -30,6 +30,20 @@ export function SourceFindingForm({ onNavigate, lessonId }: SourceFindingFormPro
   const [submitting, setSubmitting] = useState(false);
   const [generatingQuestions, setGeneratingQuestions] = useState(false);
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
+  const [linkedLesson, setLinkedLesson] = useState<{ id: string; title: string } | null>(null);
+
+  // Pre-fill from linked lesson
+  useEffect(() => {
+    if (!lessonId) return;
+    fetch(`/api/lessons/${lessonId}`)
+      .then((r) => r.json())
+      .then((data) => {
+        setLinkedLesson({ id: data.id, title: data.title });
+        if (data.title && !topic) setTopic(data.title);
+      })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lessonId]);
 
   const generateQuestions = async () => {
     if (!topic.trim()) return;
@@ -102,6 +116,12 @@ export function SourceFindingForm({ onNavigate, lessonId }: SourceFindingFormPro
         <div>
           <h1 className="text-2xl font-bold">New Source Search</h1>
           <p className="text-sm text-muted">Fill in what you can — the AI will make reasonable assumptions for anything left blank.</p>
+          {linkedLesson && (
+            <div className="mt-2 flex items-center gap-1.5 text-xs text-primary bg-primary/10 px-2.5 py-1 rounded-full w-fit">
+              <Link2 size={10} />
+              Linked to: {linkedLesson.title}
+            </div>
+          )}
         </div>
       </div>
 

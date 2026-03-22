@@ -7,6 +7,7 @@ import { LessonCardGrid } from "./LessonCardGrid";
 import { LessonAIBar } from "./LessonAIBar";
 import { ResourcesPanel } from "./ResourcesPanel";
 import { ChatPanel } from "../ChatPanel";
+import { Search } from "lucide-react";
 
 interface CurriculumConnection {
   bigIdea: string;
@@ -55,6 +56,13 @@ interface LessonFull {
     title: string;
     type: string;
     status: string;
+  }>;
+  sourceBanks?: Array<{
+    id: string;
+    topic: string;
+    status: string;
+    inquiryQuestion: string;
+    _count: { sources: number };
   }>;
   tags?: Array<{ id: string; category: string; value: string }>;
 }
@@ -284,6 +292,51 @@ export function LessonPage({ lessonId, onNavigate, onRefresh }: LessonPageProps)
                   type: r.type,
                 })) || []}
               />
+
+              {/* Source Finding */}
+              <div className="mt-4 space-y-3">
+                {lesson.sourceBanks && lesson.sourceBanks.length > 0 && (
+                  <div className="space-y-2">
+                    <h5 className="text-xs font-semibold text-muted uppercase">Linked Source Searches</h5>
+                    {lesson.sourceBanks.map((sb) => (
+                      <button
+                        key={sb.id}
+                        onClick={() => onNavigate({ type: "source-bank", sourceBankId: sb.id })}
+                        className="w-full text-left px-3 py-2.5 rounded-lg border border-border hover:border-primary/30 hover:bg-primary/5 transition-colors"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium">{sb.topic}</span>
+                          <span className={`text-[10px] uppercase px-1.5 py-0.5 rounded-full font-medium ${
+                            sb.status === "completed"
+                              ? "bg-green-100 text-green-700"
+                              : sb.status === "generating"
+                              ? "bg-amber-100 text-amber-700"
+                              : "bg-gray-100 text-gray-600"
+                          }`}>
+                            {sb.status}
+                          </span>
+                        </div>
+                        {sb.inquiryQuestion && (
+                          <p className="text-xs text-muted mt-0.5 truncate italic">{sb.inquiryQuestion}</p>
+                        )}
+                        <p className="text-xs text-muted mt-0.5">{sb._count.sources} sources</p>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <button
+                  onClick={() =>
+                    onNavigate({
+                      type: "source-finding-new",
+                      lessonId: lesson.id,
+                    })
+                  }
+                  className="flex items-center gap-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors px-3 py-2 rounded-lg hover:bg-primary/5 border border-primary/20"
+                >
+                  <Search size={14} />
+                  Find Sources for This Lesson
+                </button>
+              </div>
             </div>
           </div>
 

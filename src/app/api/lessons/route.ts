@@ -1,4 +1,27 @@
 import { prisma } from "@/lib/db";
+import { NextResponse } from "next/server";
+
+// GET /api/lessons — list all lessons (for linking UI)
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const q = searchParams.get("q") || "";
+
+  const lessons = await prisma.lesson.findMany({
+    where: q
+      ? { title: { contains: q, mode: "insensitive" } }
+      : undefined,
+    orderBy: { createdAt: "desc" },
+    take: 50,
+    select: {
+      id: true,
+      title: true,
+      status: true,
+      unit: { select: { id: true, title: true } },
+    },
+  });
+
+  return NextResponse.json(lessons);
+}
 
 export async function POST(request: Request) {
   try {

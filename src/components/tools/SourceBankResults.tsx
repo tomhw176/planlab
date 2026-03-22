@@ -5,6 +5,7 @@ import type { ViewState } from "@/app/page";
 import {
   ArrowLeft, Loader2, CheckCircle2, AlertTriangle, Star, ExternalLink,
   ChevronDown, ChevronRight, Link2, Shield, ShieldAlert, ShieldCheck,
+  LinkIcon, Unlink, Search,
 } from "lucide-react";
 
 interface CandidateSource {
@@ -200,6 +201,124 @@ function SourceCard({ source, index }: { source: CandidateSource; index: number 
   );
 }
 
+interface LessonOption {
+  id: string;
+  title: string;
+  status: string;
+  unit?: { id: string; title: string } | null;
+}
+
+function LinkToLessonButton({
+  currentLesson,
+  sourceBankId,
+  onLinked,
+}: {
+  currentLesson: { id: string; title: string } | null | undefined;
+  sourceBankId: string;
+  onLinked: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [lessons, setLessons] = useState<LessonOption[]>([]);
+  const [query, setQuery] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    setLoading(true);
+    fetch(`/api/lessons?q=${encodeURIComponent(query)}`)
+      .then((r) => r.json())
+      .then((data) => {
+        setLessons(data);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, [open, query]);
+
+  const linkLesson = async (lessonId: string | null) => {
+    await fetch(`/api/source-banks/${sourceBankId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lessonId }),
+    });
+    setOpen(false);
+    onLinked();
+  };
+
+  if (currentLesson) {
+    return (
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => linkLesson(null)}
+          className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 transition-colors"
+          title="Unlink from lesson"
+        >
+          <Unlink size={12} />
+          Unlink
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition-colors px-2 py-1 rounded-lg hover:bg-primary/5"
+      >
+        <LinkIcon size={12} />
+        Link to Lesson
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 mt-1 w-72 bg-white border border-border rounded-xl shadow-lg z-50 overflow-hidden">
+          <div className="p-2 border-b border-border">
+            <div className="flex items-center gap-2 px-2 py-1.5 bg-surface-hover rounded-lg">
+              <Search size={12} className="text-muted" />
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search lessons..."
+                className="bg-transparent text-sm flex-1 outline-none"
+                autoFocus
+              />
+            </div>
+          </div>
+          <div className="max-h-48 overflow-y-auto p-1">
+            {loading ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 size={14} className="animate-spin text-muted" />
+              </div>
+            ) : lessons.length === 0 ? (
+              <p className="text-xs text-muted text-center py-4">No lessons found</p>
+            ) : (
+              lessons.map((lesson) => (
+                <button
+                  key={lesson.id}
+                  onClick={() => linkLesson(lesson.id)}
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-surface-hover rounded-lg transition-colors"
+                >
+                  <span className="font-medium">{lesson.title}</span>
+                  {lesson.unit && (
+                    <span className="text-xs text-muted ml-2">{lesson.unit.title}</span>
+                  )}
+                </button>
+              ))
+            )}
+          </div>
+          <div className="p-2 border-t border-border">
+            <button
+              onClick={() => setOpen(false)}
+              className="w-full text-xs text-muted hover:text-foreground py-1"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function SourceBankResults({ sourceBankId, onNavigate }: SourceBankResultsProps) {
   const [data, setData] = useState<SourceBankData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -275,6 +394,11 @@ export function SourceBankResults({ sourceBankId, onNavigate }: SourceBankResult
                 {data.lesson.title}
               </button>
             )}
+            <LinkToLessonButton
+              currentLesson={data.lesson}
+              sourceBankId={data.id}
+              onLinked={fetchData}
+            />
           </div>
         </div>
       </div>
