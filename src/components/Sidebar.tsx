@@ -11,6 +11,7 @@ import {
   ChevronRight,
   PanelLeftClose,
   PanelLeftOpen,
+  Wrench,
 } from "lucide-react";
 import { COURSE_COLORS } from "@/lib/utils";
 
@@ -72,6 +73,19 @@ export function Sidebar({ courses, view, collapsed, onToggleCollapse, onNavigate
           title="Dashboard"
         >
           <Home size={18} />
+        </button>
+
+        <button
+          onClick={() => onNavigate({ type: "tools" })}
+          className={cn(
+            "p-1.5 rounded-lg transition-colors",
+            view.type === "tools" || view.type === "source-finding" || view.type === "source-finding-new" || view.type === "source-bank"
+              ? "bg-primary/10 text-primary"
+              : "text-muted hover:text-primary hover:bg-surface-hover"
+          )}
+          title="Tools"
+        >
+          <Wrench size={18} />
         </button>
 
         <div className="w-6 h-px bg-border my-1" />
@@ -142,6 +156,19 @@ export function Sidebar({ courses, view, collapsed, onToggleCollapse, onNavigate
         >
           <Home size={16} />
           Dashboard
+        </button>
+
+        <button
+          onClick={() => onNavigate({ type: "tools" })}
+          className={cn(
+            "w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors",
+            view.type === "tools" || view.type === "source-finding" || view.type === "source-finding-new" || view.type === "source-bank"
+              ? "bg-primary/10 text-primary font-medium"
+              : "hover:bg-surface-hover text-foreground"
+          )}
+        >
+          <Wrench size={16} />
+          Tools
         </button>
 
         <div className="mt-4">
