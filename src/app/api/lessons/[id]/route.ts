@@ -18,16 +18,6 @@ export async function GET(
           },
         },
         tags: true,
-        sourceBanks: {
-          select: {
-            id: true,
-            topic: true,
-            status: true,
-            inquiryQuestion: true,
-            _count: { select: { sources: true } },
-          },
-          orderBy: { createdAt: "desc" },
-        },
       },
     });
 

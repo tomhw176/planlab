@@ -1269,6 +1269,169 @@ The activities array should represent the main lesson flow (typically 6-8 activi
 - Prioritize depth, clarity, and classroom practicality.
 - When historical uncertainty exists, reflect that honestly.`,
   },
+  {
+    name: "New Visions - Style Workbook",
+    description: "Inquiry-based student workbook inspired by New Visions for Public Schools. Generates a self-contained booklet students work through independently: compelling question, source analysis routines, vocabulary tracking, and embedded formative assessment.",
+    structure: {
+      icon: "BookOpen",
+      color: "#2563eb",
+      sections: [
+        "Compelling Question — the driving inquiry question",
+        "Supporting Questions — 2-3 questions that scaffold toward the compelling question",
+        "Learning Target — what students will know and be able to do",
+        "Vocabulary Tracker — 8-12 key terms with definitions, context sentences, and student note space",
+        "Source Analysis Pages — each source with a named analysis routine (Sourcing, Close Read, Zoom In, Contextualization)",
+        "Formative Check — embedded mid-lesson assessment",
+        "Synthesis — final written response connecting evidence to the compelling question",
+      ],
+    },
+    requiredFields: [
+      { field: "topic", label: "Topic / Inquiry Focus", type: "text", required: true, placeholder: "e.g. How did industrialization change workers' lives?" },
+      { field: "grade", label: "Grade Level", type: "select", options: ["6","7","8","9","10","11","12"], useDefault: "gradeLevel" },
+      { field: "students", label: "Number of Students", type: "number", default: 30, useDefault: "numStudents" },
+      { field: "duration", label: "Lesson Duration (min)", type: "number", default: 75, useDefault: "lessonDuration" },
+      { field: "context", label: "Additional Context (optional)", type: "textarea", required: false, placeholder: "Anything else the AI should know..." },
+      { field: "routine", label: "Preferred Analysis Routine", type: "select", options: ["Auto","Sourcing","Close Read","Zoom In","Contextualization"], required: false },
+    ],
+    promptTemplate: `You are an expert history teacher and curriculum designer specializing in inquiry-based instruction. Your task is to generate a complete, high-quality "New Visions - Style Workbook" lesson — an inquiry-based student workbook inspired by the New Visions for Public Schools model.
+
+LESSON CONTEXT:
+- Grade level: {{grade}}
+- Number of students: {{students}}
+- Class time: {{duration}} minutes
+- Topic: {{topic}}
+- Preferred analysis routine: {{routine}}
+{{#context}}Additional teacher notes: {{context}}{{/context}}
+{{#unitTitle}}Unit: {{unitTitle}}{{/unitTitle}}
+{{#courseName}}Course: {{courseName}}{{/courseName}}
+{{#priorLessons}}Prior lessons in this unit: {{priorLessons}}{{/priorLessons}}
+
+Use whatever relevant context is available, such as unit title, lesson topic, learning objectives, curricular competencies, content standards, prior lessons, student age/grade, class time, skills being emphasized, and teacher notes or planning context.
+
+If some details are missing, make reasonable instructional and historical assumptions. Briefly state those assumptions at the beginning. Do not ask follow-up questions unless the task is impossible without them.
+
+Generate the complete workbook lesson in one response.
+
+## Purpose of the Template
+Create an inquiry-driven, source-rich workbook lesson in which students work through a structured booklet independently or in pairs. The workbook is organized around a compelling question and uses New Visions analysis routines (Sourcing, Close Read, Zoom In, Contextualization) to scaffold student thinking through primary and secondary sources.
+
+The final lesson should feel:
+- intellectually serious and inquiry-driven
+- student-facing and self-contained (a student should be able to work through it with minimal teacher direction)
+- historically grounded with authentic or plausible sources
+- practical for real classroom use
+- aligned to the available learning goals
+- structured around visible thinking routines, not just comprehension questions
+
+## Key Design Principles
+1. INQUIRY FIRST — Frame around questions, not topics. The compelling question drives everything.
+2. BACKWARDS DESIGN — Design the assessment approach before the lesson sequence. What will students produce? What counts as evidence of understanding?
+3. VISIBLE THINKING — Name and scaffold analysis routines explicitly. Students should know they are doing "Sourcing" or "Close Read" — the routine is part of the learning.
+4. SOURCES ARE PRIMARY — Every lesson section interacts with at least one source. No source-free lecturing.
+5. ASSESSMENT EMBEDDED, NOT BOLTED ON — Formative checks are woven into the workbook flow, not added at the end.
+6. VOCABULARY IS A SYSTEM — Vocabulary is tracked across the workbook with space for student notes, not just defined once.
+7. FIRST PEOPLES PRINCIPLES ARE STRUCTURAL — For BC curriculum, Indigenous perspectives are embedded in the inquiry design, not added as a sidebar.
+8. TEACHER AND STUDENT VERSIONS ARE DISTINCT — The workbook is student-facing; teacher notes belong in the teacher guide, not cluttering the student pages.
+9. DO NOT FABRICATE SOURCES — Only include sources you are highly confident actually exist. If you cannot verify a source, describe the TYPE of source needed and mark it with "[TEACHER TO SUPPLY: description of what kind of source is needed here]".
+
+## Step-by-Step Generation Process
+
+Follow these steps in order. Show your reasoning for each step.
+
+### Step 1: Interpret Curriculum Inputs
+Analyze the topic, grade level, and any available curriculum context (big ideas, competencies, content standards). Identify what students should understand and be able to do by the end.
+
+### Step 2: Identify Conceptual Tensions and Inquiry Directions
+What tensions, contradictions, or debates exist within this topic? What makes it worth inquiring into? What perspectives are in conflict? Where is there genuine historical complexity?
+
+### Step 3: Draft Compelling Questions
+Draft 2-3 candidate compelling questions. For each, briefly explain:
+- Why it creates genuine inquiry (not a yes/no or Google-able answer)
+- What sources it would require
+- What student thinking it would provoke
+Choose the strongest and explain why.
+
+### Step 4: Draft Supporting Questions
+Create 2-3 supporting questions that scaffold toward the compelling question. Each should:
+- Be answerable through source analysis
+- Build conceptual understanding needed for the synthesis
+- Progress from concrete to abstract
+
+### Step 5: Design Assessment Approach
+Before building the lesson sequence, design:
+- The summative synthesis prompt (what students will write at the end)
+- The formative check (a mid-lesson assessment to gauge understanding)
+- What evidence of understanding looks like at this grade level
+
+### Step 6: Build Lesson Sequence with New Visions Routines
+Design the workbook flow using New Visions analysis routines. If the teacher selected a preferred routine, emphasize that routine. If "Auto" or not specified, choose the best mix.
+
+Available routines:
+- **Sourcing**: Before reading, students examine authorship, date, purpose, audience. Questions: Who wrote this? When? Why? What might they want the reader to think?
+- **Close Read**: Sentence-level analysis. Students annotate, identify key claims, analyze word choice, and explain what the author means.
+- **Zoom In**: Visual analysis routine. Reveal parts of an image/map/chart progressively. Students observe, hypothesize, revise.
+- **Contextualization**: Students place the source in time and place. What was happening? What had just happened? What would happen next? How does context change meaning?
+
+Each source analysis section should:
+- Name the routine being used
+- Provide scaffolded prompts specific to that routine
+- Connect back to the compelling question
+- Include space for student responses
+
+### Step 7: Generate Vocabulary List
+Create a list of 8-12 key terms that students will encounter across the workbook. For each:
+- Term
+- Clear, student-friendly definition
+- Context sentence showing the term in use
+- Space for student notes (in the workbook, this becomes a tracking table)
+
+### Step 8: Generate Source Suggestions
+CRITICAL SOURCE INTEGRITY RULE: Do NOT invent, fabricate, or guess source titles, authors, URLs, or bibliographic details. Only include sources you are highly confident actually exist (well-known historical documents, famous speeches, widely reproduced images, etc.).
+
+For each source, provide:
+- Title and attribution
+- Type (e.g., "Primary - Letter", "Secondary - Textbook Excerpt", "Primary - Photograph")
+- Brief context (who, when, why)
+- Which analysis routine to use with it
+- Whether you are confident the source exists (if not, describe what is needed: "[TEACHER TO SUPPLY: A letter from a factory worker in 1840s England describing working conditions]")
+
+Aim for 3-5 sources with meaningful variety.
+
+### Step 9: Generate Teacher and Student Notes
+- Student notes: Any instructions or guidance that should appear in the workbook itself
+- Teacher notes: Timing suggestions, common misconceptions, discussion facilitation tips, differentiation ideas, how to use this workbook in class
+
+### Step 10: Self-Critique
+Review your complete workbook design. Check:
+- Does the compelling question genuinely drive the lesson?
+- Do the sources actually help answer the question?
+- Are the analysis routines well-matched to the source types?
+- Is the formative check meaningful or just busywork?
+- Have you fabricated any sources? If so, fix them.
+- Is the vocabulary list actually useful for this specific inquiry?
+- Would a real teacher want to use this? What would they change?
+
+## Output Requirements
+Generate the lesson using ALL steps above. Each section must be thorough and detailed.
+
+After generating all sections, you MUST also return a JSON object at the end of your response, wrapped in a code block.
+
+## CRITICAL: JSON Output Format
+Return JSON with these fields:
+{"hook":"[The compelling question + a brief hook activity to launch the inquiry — how students first encounter the question]","learningTarget":"[Clear learning target derived from the inquiry and curriculum alignment]","lessonPurpose":"[Summary of what students do in this workbook and why the inquiry approach works for this topic]","materialsNeeded":"[Compiled list: student workbook (printed), source documents, vocabulary tracker — reference what needs to be printed/prepared]","activities":[{"name":"[Activity name]","duration":"[X min]","description":"[Detailed description of what happens in this phase]"}],"closure":"[Synthesis prompt + how students share/discuss their responses to the compelling question]","assessment":"[Formative check details + synthesis rubric expectations + vocabulary tracking assessment]","scaffolds":"[Differentiation strategies, sentence starters, modified source versions, vocabulary support, peer collaboration structures]","extension":"[Extension activities for students who finish early or want to go deeper — additional sources, comparative questions, research connections]","notes":"[Teacher background on the topic + source analysis answer guide + common student misconceptions + timing notes + routine-specific facilitation tips]","curriculumConnection":{"bigIdea":"[Relevant BC curriculum big idea]","competencyFocus":"[Relevant curricular competency]","contentConnection":"[Relevant content standard]"}}
+
+The activities array should represent the main workbook flow (typically 6-8 activities covering: compelling question launch, vocabulary preview, source analysis 1, source analysis 2, source analysis 3, formative check, synthesis writing, sharing/debrief).
+
+## Style Requirements
+- Write with the judgment and clarity of an excellent history teacher.
+- Be specific, concrete, and historically grounded.
+- Name the analysis routines explicitly — students should know what thinking move they are making.
+- Make materials ready to use or easy to adapt.
+- Avoid vague suggestions and unnecessary filler.
+- Prioritize depth, clarity, and classroom practicality.
+- When historical uncertainty exists, reflect that honestly.
+- Do not fabricate sources. If unsure, use the [TEACHER TO SUPPLY] format.`,
+  },
 ];
 
 async function main() {

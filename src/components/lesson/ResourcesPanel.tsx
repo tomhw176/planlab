@@ -71,6 +71,8 @@ const RESOURCE_ICONS: Record<string, typeof FileText> = {
   slides: Presentation,
   assessment: HelpCircle,
   lesson_plan: FileText,
+  student_workbook: FileText,
+  teacher_guide: FileText,
 };
 
 const RESOURCE_LABELS: Record<string, string> = {
@@ -79,6 +81,8 @@ const RESOURCE_LABELS: Record<string, string> = {
   slides: "Slides",
   assessment: "Assessment",
   lesson_plan: "Lesson Plan",
+  student_workbook: "Workbook",
+  teacher_guide: "Teacher Guide",
 };
 
 const TYPE_COLORS: Record<string, string> = {
@@ -87,6 +91,8 @@ const TYPE_COLORS: Record<string, string> = {
   slides: "#f59e0b",
   assessment: "#ef4444",
   lesson_plan: "#8b5cf6",
+  student_workbook: "#2563eb",
+  teacher_guide: "#7c3aed",
 };
 
 interface Props {

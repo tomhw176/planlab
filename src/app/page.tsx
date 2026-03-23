@@ -5,20 +5,12 @@ import { Sidebar } from "@/components/Sidebar";
 import { CourseView } from "@/components/CourseView";
 import { LessonPage } from "@/components/lesson/LessonPage";
 import { ChatPanel } from "@/components/ChatPanel";
-import { ToolsPage } from "@/components/tools/ToolsPage";
-import { SourceFindingList } from "@/components/tools/SourceFindingList";
-import { SourceFindingForm } from "@/components/tools/SourceFindingForm";
-import { SourceBankResults } from "@/components/tools/SourceBankResults";
 import { PanelRightOpen, PanelRightClose } from "lucide-react";
 
 export type ViewState =
   | { type: "home" }
   | { type: "course"; courseId: string }
-  | { type: "lesson"; lessonId: string }
-  | { type: "tools" }
-  | { type: "source-finding" }
-  | { type: "source-finding-new"; lessonId?: string }
-  | { type: "source-bank"; sourceBankId: string };
+  | { type: "lesson"; lessonId: string };
 
 export interface Course {
   id: string;
@@ -220,27 +212,6 @@ export default function Home() {
             />
           )}
 
-          {view.type === "tools" && (
-            <ToolsPage onNavigate={setView} />
-          )}
-
-          {view.type === "source-finding" && (
-            <SourceFindingList onNavigate={setView} />
-          )}
-
-          {view.type === "source-finding-new" && (
-            <SourceFindingForm
-              onNavigate={setView}
-              lessonId={view.lessonId}
-            />
-          )}
-
-          {view.type === "source-bank" && (
-            <SourceBankResults
-              sourceBankId={view.sourceBankId}
-              onNavigate={setView}
-            />
-          )}
         </div>
 
         {view.type === "course" && (

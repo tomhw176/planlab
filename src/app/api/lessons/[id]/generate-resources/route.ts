@@ -1,21 +1,14 @@
 import { prisma } from "@/lib/db";
 import { Prisma } from "@/generated/prisma/client";
-import Anthropic from "@anthropic-ai/sdk";
+import { createAnthropicClient } from "@/lib/ai";
 import { getResourcePrompts } from "@/lib/resource-prompts";
 
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    return Response.json(
-      { error: "ANTHROPIC_API_KEY is not configured" },
-      { status: 500 }
-    );
-  }
-
   try {
+    const anthropic = createAnthropicClient();
     const { id } = await params;
 
     const lesson = await prisma.lesson.findUnique({
@@ -101,7 +94,7 @@ export async function POST(
       );
     }
 
-    const anthropic = new Anthropic({ apiKey });
+    // anthropic client created above
 
     const systemPrompt = `You are an expert curriculum resource designer creating classroom-ready materials for teachers. Generate polished, professional, historically accurate resources that are ready to print and use. Always return valid JSON.`;
 

@@ -266,6 +266,13 @@ export function getResourceOptions(templateName: string): ResourceOption[] {
       { title: "SAC Intro Slides", type: "slides" },
       { title: "Quiz + Answer Key", type: "assessment" },
     );
+  } else if (templateName === "New Visions - Style Workbook") {
+    options.push(
+      { title: "Student Workbook", type: "student_workbook" },
+      { title: "Teacher Guide", type: "teacher_guide" },
+      { title: "Lesson Slides", type: "slides" },
+      { title: "Quiz + Answer Key", type: "assessment" },
+    );
   } else {
     // Generic resources for any lesson
     options.push(
@@ -287,6 +294,7 @@ export function getResourcePrompts(lesson: LessonData, templateName: string, sel
     "History Lab": getHistoryLabPrompts,
     "Philosophy for History": getPhilosophyForHistoryPrompts,
     "Structured Academic Controversy": getSACPrompts,
+    "New Visions - Style Workbook": getNewVisionsWorkbookPrompts,
   };
 
   const getTemplatePrompts = templatePromptMap[templateName];
@@ -776,6 +784,133 @@ Requirements:
 - Short answer should require students to explain the strongest arguments on each side or identify what evidence supports a position
 - The constructed response should ask students to explain what common ground is possible or to evaluate which side has stronger evidence
 - Questions should be answerable based on what students learned during the SAC
+- Include a complete answer key with brief explanations
+- Appropriate difficulty for the grade level
+
+Return as JSON with this exact structure:
+{"title":"Quiz title","instructions":"Brief instructions for students","questions":[{"number":1,"question":"Question text","type":"multiple_choice or short_answer or constructed_response","options":["A) Option text","B) Option text","C) Option text","D) Option text"],"answer":"Correct answer","explanation":"Brief explanation"}]}`,
+      parseResponse: parseJSONWithQuestions,
+    },
+  ];
+}
+
+function getNewVisionsWorkbookPrompts(lesson: LessonData): ResourcePromptConfig[] {
+  const context = serializeLessonContext(lesson);
+
+  return [
+    // 1. Student Workbook
+    {
+      type: "student_workbook",
+      title: "Student Workbook",
+      userPrompt: `You are creating a self-contained inquiry-based student workbook based on this lesson plan:
+
+${context}
+
+Create a complete student workbook in the New Visions for Public Schools style. This is a self-contained booklet that students work through independently or in pairs. It should be organized around a compelling question and use named analysis routines (Sourcing, Close Read, Zoom In, Contextualization) to scaffold student thinking through sources.
+
+The workbook must include:
+
+1. COMPELLING QUESTION — The driving inquiry question, displayed prominently
+2. SUPPORTING QUESTIONS — 2-3 questions that scaffold toward the compelling question
+3. LEARNING TARGET — A clear, student-friendly statement of what students will know and be able to do
+4. VOCABULARY TRACKER — A table of 8-12 key terms with columns for: Term, Definition (student-friendly), Context Sentence, My Notes (blank for students to fill in)
+5. SOURCE ANALYSIS SECTIONS — For each source (3-5 sources):
+   - Source title, type (e.g. "Primary - Letter"), and attribution
+   - Whether the source is verified as real (isVerified: true/false)
+   - If NOT verified, a teacher note describing what type of source is needed: "[TEACHER TO SUPPLY: description]"
+   - A brief context note (who created it, when, why — 1-2 sentences)
+   - The analysis framework being used (one of: Sourcing, Close Read, Zoom In, Contextualization)
+   - 3-5 scaffolded analysis prompts specific to that routine
+   - Number of response lines to provide for each prompt (typically 3-5)
+6. FORMATIVE CHECK — A mid-workbook check with instructions and 2-3 questions
+7. SYNTHESIS PROMPT — A final writing prompt that asks students to use evidence from their source analysis to answer the compelling question
+
+CRITICAL SOURCE INTEGRITY RULE: Do NOT invent, fabricate, or guess source titles, authors, URLs, or bibliographic details. Only include sources you are highly confident actually exist (well-known historical documents, famous speeches, widely reproduced images, canonical textbook excerpts, etc.). For any source you cannot verify with high confidence, set isVerified to false and fill teacherNote with a description of the type of source needed, e.g. "[TEACHER TO SUPPLY: A political cartoon from the 1830s depicting the Indian Removal Act]".
+
+Return as JSON with this exact structure:
+{"compellingQuestion":"The driving inquiry question","supportingQuestions":["Supporting question 1","Supporting question 2"],"learningTarget":"Clear learning target statement","vocabularyTracker":[{"term":"Key term","definition":"Student-friendly definition","contextSentence":"The term used in a sentence","studentNotes":""}],"sourceAnalysisSections":[{"sourceTitle":"Title of the source","sourceType":"Primary - Letter","sourceAttribution":"Author, date, collection/archive","isVerified":true,"teacherNote":"","contextNote":"Brief context about who created this and why","analysisFramework":"Sourcing","analysisPrompts":["Scaffolded question 1","Scaffolded question 2","Scaffolded question 3"],"responseLineCount":4}],"formativeCheck":{"instructions":"Instructions for the formative check","questions":["Question 1","Question 2"]},"synthesisPrompt":"Final synthesis writing prompt connecting evidence to the compelling question"}`,
+      parseResponse: parseJSON,
+    },
+
+    // 2. Teacher Guide
+    {
+      type: "teacher_guide",
+      title: "Teacher Guide",
+      userPrompt: `You are creating a comprehensive teacher guide to accompany a New Visions-style student workbook based on this lesson plan:
+
+${context}
+
+Create a teacher guide that mirrors the student workbook structure but adds expected responses, teaching notes, rubrics, and facilitation guidance. This is the teacher's companion document — it should contain everything the teacher needs to facilitate the workbook lesson effectively.
+
+The teacher guide must include:
+
+1. COMPELLING QUESTION — Same as student workbook
+2. SUPPORTING QUESTIONS — Same as student workbook
+3. LEARNING TARGET — Same as student workbook
+4. VOCABULARY TRACKER — Same terms but with a "teachingStrategy" column instead of "studentNotes" (how to teach each term — cognates, visuals, word parts, etc.)
+5. SOURCE ANALYSIS SECTIONS — For each source (matching the student workbook):
+   - Same source metadata (title, type, attribution, isVerified, teacherNote, contextNote, analysisFramework)
+   - Same analysis prompts
+   - PLUS: expectedResponses — model answers for each prompt (what a strong student response looks like)
+   - PLUS: teachingNotes — timing, scaffolding suggestions, common misconceptions for this source
+   - PLUS: followUpQuestions — 2-3 extension questions the teacher can use to push student thinking
+6. FORMATIVE CHECK — Same questions plus:
+   - A rubric describing what proficient vs. developing responses look like
+   - Sample responses at different levels
+7. SYNTHESIS PROMPT — Same prompt plus:
+   - A synthesis rubric describing expectations for evidence use, argument structure, and historical thinking
+
+CRITICAL SOURCE INTEGRITY RULE: Do NOT invent, fabricate, or guess source titles, authors, URLs, or bibliographic details. Only include sources you are highly confident actually exist. For any source you cannot verify with high confidence, set isVerified to false and fill teacherNote with a description of the type of source needed.
+
+Return as JSON with this exact structure:
+{"compellingQuestion":"The driving inquiry question","supportingQuestions":["Supporting question 1","Supporting question 2"],"learningTarget":"Clear learning target statement","vocabularyTracker":[{"term":"Key term","definition":"Student-friendly definition","contextSentence":"The term used in a sentence","teachingStrategy":"How to teach this term — cognates, visuals, word parts, etc."}],"sourceAnalysisSections":[{"sourceTitle":"Title of the source","sourceType":"Primary - Letter","sourceAttribution":"Author, date, collection/archive","isVerified":true,"teacherNote":"","contextNote":"Brief context about who created this and why","analysisFramework":"Sourcing","analysisPrompts":["Scaffolded question 1","Scaffolded question 2"],"expectedResponses":["Model answer for question 1","Model answer for question 2"],"teachingNotes":"Timing, scaffolding, common misconceptions for this source","followUpQuestions":["Extension question 1","Extension question 2"]}],"formativeCheck":{"instructions":"Instructions for the formative check","questions":["Question 1","Question 2"],"rubric":"Description of proficient vs. developing responses","sampleResponses":["Sample proficient response","Sample developing response"]},"synthesisPrompt":"Final synthesis writing prompt","synthesisRubric":"Rubric describing expectations for evidence use, argument structure, and historical thinking"}`,
+      parseResponse: parseJSON,
+    },
+
+    // 3. Lesson Slides
+    {
+      type: "slides",
+      title: "Lesson Slides",
+      userPrompt: `You are creating a teacher presentation to accompany a New Visions-style workbook lesson based on this lesson plan:
+
+${context}
+
+Create a slide deck (6-8 slides) that supports the delivery of this inquiry-based workbook lesson. The slides should introduce the compelling question, set context, and guide transitions between workbook sections.
+
+Slide structure:
+1. Title slide — Lesson title + the compelling question prominently displayed
+2. What are we investigating? — The compelling question + supporting questions
+3. Vocabulary Preview — 4-5 of the most important terms students will encounter
+4. Source Introduction — Brief context for the sources students will analyze (DO NOT show full sources — those are in the workbook)
+5. Analysis Routine Reminder — Visual reminder of the analysis routine(s) being used (Sourcing / Close Read / Zoom In / Contextualization) with key steps
+6. Formative Check — Display the formative check questions for class discussion
+7. Synthesis Task — The final writing prompt with expectations
+8. (Optional) Sharing / Debrief — How students will share their synthesis responses
+
+Keep text concise — these are projected slides, not reading material. Include teacher notes for each slide with talking points, timing, and facilitation tips.
+
+Return as JSON with this exact structure:
+{"slides":[{"title":"Slide title","body":"Slide body text (keep concise, use bullet points with • character)","notes":"Teacher notes and talking points for this slide"}]}`,
+      parseResponse: parseJSONWithSlides,
+    },
+
+    // 4. Quiz + Answer Key
+    {
+      type: "assessment",
+      title: "Quiz + Answer Key",
+      userPrompt: `You are creating a short assessment based on this lesson plan:
+
+${context}
+
+Create a short quiz (8-10 questions) that checks student understanding of the historical content, the inquiry question, source analysis skills, and vocabulary from this New Visions-style workbook lesson.
+
+Requirements:
+- Mix of question types: multiple choice (4-5), short answer (3-4), and one brief constructed response
+- Multiple choice should test historical content and source interpretation (not trivial recall)
+- Include 1-2 vocabulary questions testing terms from the workbook
+- Short answer should require students to demonstrate source analysis skills (sourcing, contextualization, etc.)
+- The constructed response should ask students to use evidence from the workbook sources to answer a question related to the compelling question
+- Questions should be answerable based on what students learned during the workbook lesson
 - Include a complete answer key with brief explanations
 - Appropriate difficulty for the grade level
 

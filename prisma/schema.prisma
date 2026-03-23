@@ -70,7 +70,6 @@ model Lesson {
   chats                Chat[]
   unit                 Unit?      @relation(fields: [unitId], references: [id], onDelete: Cascade)
   resources            Resource[]
-  sourceBanks          SourceBank[]
   tags                 Tag[]      @relation("LessonToTag")
 }
 
@@ -144,52 +143,3 @@ model ChatMessage {
   chat      Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
 }
 
-model SourceBank {
-  id                     String            @id @default(cuid())
-  topic                  String
-  grade                  String            @default("")
-  inquiryQuestion        String            @default("")
-  perspectives           Json              @default("[]")
-  historicalThinkingSkills String          @default("")
-  numSourcesRequested    Int               @default(6)
-  notes                  String            @default("")
-  status                 String            @default("pending")
-  recommendedSequence    Json              @default("[]")
-  createdAt              DateTime          @default(now())
-  updatedAt              DateTime          @updatedAt
-  lessonId               String?
-  lesson                 Lesson?           @relation(fields: [lessonId], references: [id], onDelete: SetNull)
-  sources                CandidateSource[]
-}
-
-model CandidateSource {
-  id                    String     @id @default(cuid())
-  title                 String
-  summary               String     @default("")
-  sourceType            String     @default("")
-  perspectiveRole       String     @default("")
-  metadata              Json       @default("{}")
-  bibliographicInfo     String     @default("")
-  link                  String     @default("")
-  creator               String     @default("")
-  dateCreated           String     @default("")
-  significance          String     @default("")
-  claimsEvidence        String     @default("")
-  historicalThinkingMove String    @default("")
-  lengthDescription     String     @default("")
-  excerptOptions        String     @default("")
-  vocabularyBarriers    String     @default("")
-  relevanceScore        Int        @default(0)
-  readabilityScore      Int        @default(0)
-  excerptabilityScore   Int        @default(0)
-  historicalThinkingScore Int      @default(0)
-  uniquenessScore       Int        @default(0)
-  overallScore          Float      @default(0)
-  confidenceLevel       String     @default("medium")
-  isRecommended         Boolean    @default(false)
-  sequenceOrder         Int?
-  flags                 String     @default("")
-  createdAt             DateTime   @default(now())
-  sourceBankId          String
-  sourceBank            SourceBank @relation(fields: [sourceBankId], references: [id], onDelete: Cascade)
-}

@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import Anthropic from "@anthropic-ai/sdk";
+import { createAnthropicClient } from "@/lib/ai";
 
 const SECTION_PROMPTS: Record<string, Record<string, string>> = {
   curriculumConnection: {
@@ -164,16 +164,8 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-
-  if (!apiKey) {
-    return Response.json(
-      { error: "ANTHROPIC_API_KEY is not configured" },
-      { status: 500 }
-    );
-  }
-
   try {
+    const anthropic = createAnthropicClient();
     const body = await request.json();
     const { section, action } = body;
 
@@ -202,7 +194,7 @@ export async function POST(
 Current lesson context:
 ${context}`;
 
-    const anthropic = new Anthropic({ apiKey });
+    // anthropic client created above
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
       max_tokens: 2048,

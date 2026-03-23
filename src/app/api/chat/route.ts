@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import Anthropic from "@anthropic-ai/sdk";
+import { createAnthropicClient } from "@/lib/ai";
 
 const SYSTEM_PROMPT = `You are a curriculum planning assistant for PlanLab, a tool designed to help teachers plan and organize their courses, units, and lessons. You help with:
 
@@ -126,15 +126,8 @@ async function gatherContext(body: {
 }
 
 export async function POST(request: Request) {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    return Response.json(
-      { error: "ANTHROPIC_API_KEY is not configured" },
-      { status: 500 }
-    );
-  }
-
   try {
+    const anthropic = createAnthropicClient();
     const body = await request.json();
     const { message, courseId, unitId, lessonId, resourceId, chatId } = body;
 
@@ -197,8 +190,7 @@ export async function POST(request: Request) {
     );
     messageHistory.push({ role: "user", content: message });
 
-    // Call Claude API
-    const anthropic = new Anthropic({ apiKey });
+    // Call Claude API (anthropic client created above)
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
       max_tokens: 4096,

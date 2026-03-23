@@ -460,6 +460,614 @@ function buildQuizDocx(
   return new Document({ sections: [{ children }] });
 }
 
+// ── Student Workbook Builder (New Visions) ──
+
+function buildStudentWorkbookDocx(
+  content: Record<string, unknown>,
+  lessonTitle: string
+): Document {
+  const compellingQuestion = (content.compellingQuestion as string) || "";
+  const supportingQuestions = (content.supportingQuestions as string[]) || [];
+  const learningTarget = (content.learningTarget as string) || "";
+  const vocabularyTracker = (content.vocabularyTracker as Array<{
+    term: string; definition: string; contextSentence: string; studentNotes: string;
+  }>) || [];
+  const sourceAnalysisSections = (content.sourceAnalysisSections as Array<{
+    sourceTitle: string; sourceType: string; sourceAttribution: string;
+    isVerified: boolean; teacherNote: string; contextNote: string;
+    analysisFramework: string; analysisPrompts: string[]; responseLineCount: number;
+  }>) || [];
+  const formativeCheck = (content.formativeCheck as { instructions: string; questions: string[] }) || { instructions: "", questions: [] };
+  const synthesisPrompt = (content.synthesisPrompt as string) || "";
+
+  const children: (Paragraph | Table)[] = [];
+  const blueAccent = "2563EB";
+
+  // ── Title Page ──
+  children.push(
+    new Paragraph({ spacing: { before: 2000 } })
+  );
+  children.push(
+    new Paragraph({
+      children: [
+        new TextRun({ text: compellingQuestion, bold: true, size: 40, font: "Georgia", color: blueAccent }),
+      ],
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 400 },
+    })
+  );
+  children.push(
+    new Paragraph({
+      children: [
+        new TextRun({ text: lessonTitle, size: 28, font: "Georgia", color: "333333" }),
+      ],
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 600 },
+    })
+  );
+  children.push(
+    new Paragraph({
+      children: [
+        new TextRun({ text: "Name: ______________________________    Date: ______________    Class: ______________", size: 22, font: "Georgia", color: "666666" }),
+      ],
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 200 },
+    })
+  );
+  children.push(new Paragraph({ children: [new PageBreak()] }));
+
+  // ── Supporting Questions ──
+  children.push(
+    new Paragraph({
+      children: [new TextRun({ text: "SUPPORTING QUESTIONS", bold: true, size: 26, font: "Georgia", color: blueAccent })],
+      spacing: { after: 150 },
+      border: { bottom: { style: BorderStyle.SINGLE, size: 2, color: blueAccent } },
+    })
+  );
+  for (const sq of supportingQuestions) {
+    children.push(
+      new Paragraph({
+        children: [new TextRun({ text: `• ${sq}`, size: 22, font: "Georgia" })],
+        spacing: { after: 100 },
+        indent: { left: 360 },
+      })
+    );
+  }
+
+  // ── Learning Target ──
+  children.push(
+    new Paragraph({
+      children: [new TextRun({ text: "LEARNING TARGET", bold: true, size: 26, font: "Georgia", color: blueAccent })],
+      spacing: { before: 300, after: 100 },
+      border: { bottom: { style: BorderStyle.SINGLE, size: 2, color: blueAccent } },
+    })
+  );
+  children.push(
+    new Paragraph({
+      children: [new TextRun({ text: learningTarget, size: 22, font: "Georgia" })],
+      spacing: { after: 200 },
+      shading: { type: ShadingType.CLEAR, fill: "EBF5FF" },
+    })
+  );
+
+  // ── Vocabulary Tracker ──
+  children.push(
+    new Paragraph({
+      children: [new TextRun({ text: "VOCABULARY TRACKER", bold: true, size: 26, font: "Georgia", color: blueAccent })],
+      spacing: { before: 300, after: 150 },
+      border: { bottom: { style: BorderStyle.SINGLE, size: 2, color: blueAccent } },
+    })
+  );
+
+  if (vocabularyTracker.length > 0) {
+    const headerRow = new TableRow({
+      children: ["Term", "Definition", "Context", "My Notes"].map((h) =>
+        new TableCell({
+          children: [new Paragraph({ children: [new TextRun({ text: h, bold: true, size: 20, color: "FFFFFF", font: "Georgia" })], alignment: AlignmentType.CENTER })],
+          shading: { type: ShadingType.CLEAR, fill: blueAccent },
+          width: { size: 25, type: WidthType.PERCENTAGE },
+        })
+      ),
+    });
+
+    const dataRows = vocabularyTracker.map((v) =>
+      new TableRow({
+        children: [
+          new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: v.term, bold: true, size: 20, font: "Georgia" })], spacing: { after: 40 } })], width: { size: 25, type: WidthType.PERCENTAGE } }),
+          new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: v.definition, size: 20, font: "Georgia" })], spacing: { after: 40 } })], width: { size: 25, type: WidthType.PERCENTAGE } }),
+          new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: v.contextSentence, size: 20, font: "Georgia", italics: true })], spacing: { after: 40 } })], width: { size: 25, type: WidthType.PERCENTAGE } }),
+          new TableCell({ children: [new Paragraph({ text: "", spacing: { after: 40 } })], width: { size: 25, type: WidthType.PERCENTAGE } }),
+        ],
+      })
+    );
+
+    children.push(new Table({ rows: [headerRow, ...dataRows], width: { size: 100, type: WidthType.PERCENTAGE } }));
+  }
+
+  // ── Source Analysis Pages ──
+  for (let i = 0; i < sourceAnalysisSections.length; i++) {
+    const source = sourceAnalysisSections[i];
+    children.push(new Paragraph({ children: [new PageBreak()] }));
+
+    // Source header
+    children.push(
+      new Paragraph({
+        children: [new TextRun({ text: `SOURCE ${i + 1}: ${source.sourceTitle}`, bold: true, size: 28, font: "Georgia", color: blueAccent })],
+        spacing: { after: 100 },
+      })
+    );
+    children.push(
+      new Paragraph({
+        children: [
+          new TextRun({ text: `Type: ${source.sourceType}`, size: 20, font: "Georgia", color: "555555" }),
+          new TextRun({ text: `    Attribution: ${source.sourceAttribution}`, size: 20, font: "Georgia", color: "555555" }),
+        ],
+        spacing: { after: 100 },
+      })
+    );
+
+    // Unverified source warning
+    if (!source.isVerified) {
+      children.push(
+        new Paragraph({
+          children: [new TextRun({ text: `[TEACHER TO SUPPLY] ${source.teacherNote}`, bold: true, size: 22, font: "Georgia", color: "DC2626" })],
+          spacing: { after: 100 },
+          shading: { type: ShadingType.CLEAR, fill: "FEF2F2" },
+        })
+      );
+    }
+
+    // Context note
+    if (source.contextNote) {
+      children.push(
+        new Paragraph({
+          children: [
+            new TextRun({ text: "Context: ", bold: true, size: 20, font: "Georgia" }),
+            new TextRun({ text: source.contextNote, size: 20, font: "Georgia", italics: true }),
+          ],
+          spacing: { after: 150 },
+        })
+      );
+    }
+
+    // Analysis framework header
+    children.push(
+      new Paragraph({
+        children: [new TextRun({ text: source.analysisFramework.toUpperCase(), bold: true, size: 24, font: "Georgia", color: "FFFFFF" })],
+        shading: { type: ShadingType.CLEAR, fill: blueAccent },
+        spacing: { before: 200, after: 150 },
+        alignment: AlignmentType.CENTER,
+      })
+    );
+
+    // Analysis prompts with response lines
+    const lineCount = source.responseLineCount || 4;
+    for (const prompt of source.analysisPrompts) {
+      children.push(
+        new Paragraph({
+          children: [new TextRun({ text: `• ${prompt}`, size: 22, font: "Georgia" })],
+          spacing: { before: 150, after: 80 },
+        })
+      );
+      for (let line = 0; line < lineCount; line++) {
+        children.push(
+          new Paragraph({
+            text: "",
+            spacing: { after: 50 },
+            border: { bottom: { style: BorderStyle.SINGLE, size: 1, color: "DDDDDD" } },
+          })
+        );
+      }
+    }
+  }
+
+  // ── Formative Check ──
+  children.push(new Paragraph({ children: [new PageBreak()] }));
+  children.push(
+    new Paragraph({
+      children: [new TextRun({ text: "FORMATIVE CHECK", bold: true, size: 26, font: "Georgia", color: blueAccent })],
+      spacing: { after: 100 },
+      border: { bottom: { style: BorderStyle.SINGLE, size: 2, color: blueAccent } },
+    })
+  );
+  if (formativeCheck.instructions) {
+    children.push(
+      new Paragraph({
+        children: [new TextRun({ text: formativeCheck.instructions, italics: true, size: 22, font: "Georgia", color: "555555" })],
+        spacing: { after: 150 },
+      })
+    );
+  }
+  for (let qi = 0; qi < formativeCheck.questions.length; qi++) {
+    children.push(
+      new Paragraph({
+        children: [new TextRun({ text: `${qi + 1}. ${formativeCheck.questions[qi]}`, size: 22, font: "Georgia" })],
+        spacing: { before: 150, after: 80 },
+      })
+    );
+    for (let line = 0; line < 4; line++) {
+      children.push(
+        new Paragraph({
+          text: "",
+          spacing: { after: 50 },
+          border: { bottom: { style: BorderStyle.SINGLE, size: 1, color: "DDDDDD" } },
+        })
+      );
+    }
+  }
+
+  // ── Synthesis ──
+  children.push(new Paragraph({ children: [new PageBreak()] }));
+  children.push(
+    new Paragraph({
+      children: [new TextRun({ text: "SYNTHESIS", bold: true, size: 26, font: "Georgia", color: blueAccent })],
+      spacing: { after: 100 },
+      border: { bottom: { style: BorderStyle.SINGLE, size: 2, color: blueAccent } },
+    })
+  );
+  children.push(
+    new Paragraph({
+      children: [new TextRun({ text: synthesisPrompt, size: 22, font: "Georgia" })],
+      spacing: { after: 200 },
+      shading: { type: ShadingType.CLEAR, fill: "EBF5FF" },
+    })
+  );
+  // Extended response lines
+  for (let line = 0; line < 16; line++) {
+    children.push(
+      new Paragraph({
+        text: "",
+        spacing: { after: 50 },
+        border: { bottom: { style: BorderStyle.SINGLE, size: 1, color: "DDDDDD" } },
+      })
+    );
+  }
+
+  return new Document({
+    styles: { default: { document: { run: { size: 22, font: "Georgia" } } } },
+    sections: [{ children }],
+  });
+}
+
+// ── Teacher Guide Builder (New Visions) ──
+
+function buildTeacherGuideDocx(
+  content: Record<string, unknown>,
+  lessonTitle: string
+): Document {
+  const compellingQuestion = (content.compellingQuestion as string) || "";
+  const supportingQuestions = (content.supportingQuestions as string[]) || [];
+  const learningTarget = (content.learningTarget as string) || "";
+  const vocabularyTracker = (content.vocabularyTracker as Array<{
+    term: string; definition: string; contextSentence: string; teachingStrategy: string;
+  }>) || [];
+  const sourceAnalysisSections = (content.sourceAnalysisSections as Array<{
+    sourceTitle: string; sourceType: string; sourceAttribution: string;
+    isVerified: boolean; teacherNote: string; contextNote: string;
+    analysisFramework: string; analysisPrompts: string[];
+    expectedResponses: string[]; teachingNotes: string; followUpQuestions: string[];
+  }>) || [];
+  const formativeCheck = (content.formativeCheck as {
+    instructions: string; questions: string[]; rubric: string; sampleResponses: string[];
+  }) || { instructions: "", questions: [], rubric: "", sampleResponses: [] };
+  const synthesisPrompt = (content.synthesisPrompt as string) || "";
+  const synthesisRubric = (content.synthesisRubric as string) || "";
+
+  const children: (Paragraph | Table)[] = [];
+  const blueAccent = "2563EB";
+  const purpleAccent = "7C3AED";
+  const answerFill = "E8F4FD";
+
+  // ── Header ──
+  children.push(
+    new Paragraph({
+      children: [new TextRun({ text: "TEACHER GUIDE", bold: true, size: 32, font: "Georgia", color: purpleAccent })],
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 100 },
+    })
+  );
+  children.push(
+    new Paragraph({
+      children: [new TextRun({ text: lessonTitle, size: 28, font: "Georgia", color: "333333" })],
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 100 },
+    })
+  );
+  children.push(
+    new Paragraph({
+      children: [new TextRun({ text: compellingQuestion, bold: true, size: 26, font: "Georgia", color: blueAccent })],
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 200 },
+      border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: purpleAccent } },
+    })
+  );
+
+  // ── Supporting Questions ──
+  children.push(
+    new Paragraph({
+      children: [new TextRun({ text: "SUPPORTING QUESTIONS", bold: true, size: 26, font: "Georgia", color: purpleAccent })],
+      spacing: { before: 300, after: 150 },
+      border: { bottom: { style: BorderStyle.SINGLE, size: 2, color: purpleAccent } },
+    })
+  );
+  for (const sq of supportingQuestions) {
+    children.push(
+      new Paragraph({
+        children: [new TextRun({ text: `• ${sq}`, size: 22, font: "Georgia" })],
+        spacing: { after: 100 },
+        indent: { left: 360 },
+      })
+    );
+  }
+
+  // ── Learning Target ──
+  children.push(
+    new Paragraph({
+      children: [new TextRun({ text: "LEARNING TARGET", bold: true, size: 26, font: "Georgia", color: purpleAccent })],
+      spacing: { before: 300, after: 100 },
+      border: { bottom: { style: BorderStyle.SINGLE, size: 2, color: purpleAccent } },
+    })
+  );
+  children.push(
+    new Paragraph({
+      children: [new TextRun({ text: learningTarget, size: 22, font: "Georgia" })],
+      spacing: { after: 200 },
+      shading: { type: ShadingType.CLEAR, fill: "F3E8FF" },
+    })
+  );
+
+  // ── Vocabulary Tracker ──
+  children.push(
+    new Paragraph({
+      children: [new TextRun({ text: "VOCABULARY TRACKER", bold: true, size: 26, font: "Georgia", color: purpleAccent })],
+      spacing: { before: 300, after: 150 },
+      border: { bottom: { style: BorderStyle.SINGLE, size: 2, color: purpleAccent } },
+    })
+  );
+
+  if (vocabularyTracker.length > 0) {
+    const headerRow = new TableRow({
+      children: ["Term", "Definition", "Context", "Teaching Strategy"].map((h) =>
+        new TableCell({
+          children: [new Paragraph({ children: [new TextRun({ text: h, bold: true, size: 20, color: "FFFFFF", font: "Georgia" })], alignment: AlignmentType.CENTER })],
+          shading: { type: ShadingType.CLEAR, fill: purpleAccent },
+          width: { size: 25, type: WidthType.PERCENTAGE },
+        })
+      ),
+    });
+
+    const dataRows = vocabularyTracker.map((v) =>
+      new TableRow({
+        children: [
+          new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: v.term, bold: true, size: 20, font: "Georgia" })], spacing: { after: 40 } })], width: { size: 25, type: WidthType.PERCENTAGE } }),
+          new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: v.definition, size: 20, font: "Georgia" })], spacing: { after: 40 } })], width: { size: 25, type: WidthType.PERCENTAGE } }),
+          new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: v.contextSentence, size: 20, font: "Georgia", italics: true })], spacing: { after: 40 } })], width: { size: 25, type: WidthType.PERCENTAGE } }),
+          new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: v.teachingStrategy, size: 20, font: "Georgia", italics: true })], spacing: { after: 40 } })], width: { size: 25, type: WidthType.PERCENTAGE } }),
+        ],
+      })
+    );
+
+    children.push(new Table({ rows: [headerRow, ...dataRows], width: { size: 100, type: WidthType.PERCENTAGE } }));
+  }
+
+  // ── Source Analysis Pages ──
+  for (let i = 0; i < sourceAnalysisSections.length; i++) {
+    const source = sourceAnalysisSections[i];
+    children.push(new Paragraph({ children: [new PageBreak()] }));
+
+    // Source header
+    children.push(
+      new Paragraph({
+        children: [new TextRun({ text: `SOURCE ${i + 1}: ${source.sourceTitle}`, bold: true, size: 28, font: "Georgia", color: purpleAccent })],
+        spacing: { after: 100 },
+      })
+    );
+    children.push(
+      new Paragraph({
+        children: [
+          new TextRun({ text: `Type: ${source.sourceType}`, size: 20, font: "Georgia", color: "555555" }),
+          new TextRun({ text: `    Attribution: ${source.sourceAttribution}`, size: 20, font: "Georgia", color: "555555" }),
+        ],
+        spacing: { after: 100 },
+      })
+    );
+
+    if (!source.isVerified) {
+      children.push(
+        new Paragraph({
+          children: [new TextRun({ text: `[TEACHER TO SUPPLY] ${source.teacherNote}`, bold: true, size: 22, font: "Georgia", color: "DC2626" })],
+          spacing: { after: 100 },
+          shading: { type: ShadingType.CLEAR, fill: "FEF2F2" },
+        })
+      );
+    }
+
+    if (source.contextNote) {
+      children.push(
+        new Paragraph({
+          children: [
+            new TextRun({ text: "Context: ", bold: true, size: 20, font: "Georgia" }),
+            new TextRun({ text: source.contextNote, size: 20, font: "Georgia", italics: true }),
+          ],
+          spacing: { after: 150 },
+        })
+      );
+    }
+
+    // Analysis framework header
+    children.push(
+      new Paragraph({
+        children: [new TextRun({ text: source.analysisFramework.toUpperCase(), bold: true, size: 24, font: "Georgia", color: "FFFFFF" })],
+        shading: { type: ShadingType.CLEAR, fill: purpleAccent },
+        spacing: { before: 200, after: 150 },
+        alignment: AlignmentType.CENTER,
+      })
+    );
+
+    // Teaching notes
+    if (source.teachingNotes) {
+      children.push(
+        new Paragraph({
+          children: [
+            new TextRun({ text: "TEACHING NOTE: ", bold: true, size: 20, font: "Georgia", color: purpleAccent }),
+            new TextRun({ text: source.teachingNotes, size: 20, font: "Georgia", italics: true }),
+          ],
+          spacing: { after: 150 },
+          shading: { type: ShadingType.CLEAR, fill: "F9FAFB" },
+        })
+      );
+    }
+
+    // Analysis prompts with expected responses
+    for (let pi = 0; pi < source.analysisPrompts.length; pi++) {
+      const prompt = source.analysisPrompts[pi];
+      children.push(
+        new Paragraph({
+          children: [new TextRun({ text: `• ${prompt}`, size: 22, font: "Georgia" })],
+          spacing: { before: 150, after: 80 },
+        })
+      );
+
+      // Expected response in shaded box
+      const expectedResponse = source.expectedResponses?.[pi] || "";
+      if (expectedResponse) {
+        children.push(
+          new Paragraph({
+            children: [
+              new TextRun({ text: "Expected response: ", bold: true, size: 20, font: "Georgia", color: "1a7f37" }),
+              new TextRun({ text: expectedResponse, size: 20, font: "Georgia" }),
+            ],
+            spacing: { after: 100 },
+            shading: { type: ShadingType.CLEAR, fill: answerFill },
+            indent: { left: 360 },
+          })
+        );
+      }
+    }
+
+    // Follow-up questions
+    if (source.followUpQuestions?.length) {
+      children.push(
+        new Paragraph({
+          children: [new TextRun({ text: "FOLLOW-UP QUESTIONS:", bold: true, size: 22, font: "Georgia", color: purpleAccent })],
+          spacing: { before: 200, after: 100 },
+        })
+      );
+      for (const fq of source.followUpQuestions) {
+        children.push(
+          new Paragraph({
+            children: [new TextRun({ text: `• ${fq}`, size: 20, font: "Georgia", italics: true })],
+            spacing: { after: 60 },
+            indent: { left: 360 },
+          })
+        );
+      }
+    }
+  }
+
+  // ── Formative Check ──
+  children.push(new Paragraph({ children: [new PageBreak()] }));
+  children.push(
+    new Paragraph({
+      children: [new TextRun({ text: "FORMATIVE CHECK", bold: true, size: 26, font: "Georgia", color: purpleAccent })],
+      spacing: { after: 100 },
+      border: { bottom: { style: BorderStyle.SINGLE, size: 2, color: purpleAccent } },
+    })
+  );
+  if (formativeCheck.instructions) {
+    children.push(
+      new Paragraph({
+        children: [new TextRun({ text: formativeCheck.instructions, italics: true, size: 22, font: "Georgia", color: "555555" })],
+        spacing: { after: 150 },
+      })
+    );
+  }
+  for (let qi = 0; qi < formativeCheck.questions.length; qi++) {
+    children.push(
+      new Paragraph({
+        children: [new TextRun({ text: `${qi + 1}. ${formativeCheck.questions[qi]}`, size: 22, font: "Georgia" })],
+        spacing: { before: 150, after: 80 },
+      })
+    );
+  }
+
+  // Rubric
+  if (formativeCheck.rubric) {
+    children.push(
+      new Paragraph({
+        children: [new TextRun({ text: "RUBRIC", bold: true, size: 22, font: "Georgia", color: purpleAccent })],
+        spacing: { before: 250, after: 100 },
+      })
+    );
+    children.push(
+      new Paragraph({
+        children: [new TextRun({ text: formativeCheck.rubric, size: 20, font: "Georgia" })],
+        spacing: { after: 150 },
+        shading: { type: ShadingType.CLEAR, fill: answerFill },
+      })
+    );
+  }
+
+  // Sample responses
+  if (formativeCheck.sampleResponses?.length) {
+    children.push(
+      new Paragraph({
+        children: [new TextRun({ text: "SAMPLE RESPONSES:", bold: true, size: 22, font: "Georgia", color: purpleAccent })],
+        spacing: { before: 200, after: 100 },
+      })
+    );
+    for (const sr of formativeCheck.sampleResponses) {
+      children.push(
+        new Paragraph({
+          children: [new TextRun({ text: `• ${sr}`, size: 20, font: "Georgia" })],
+          spacing: { after: 80 },
+          indent: { left: 360 },
+          shading: { type: ShadingType.CLEAR, fill: answerFill },
+        })
+      );
+    }
+  }
+
+  // ── Synthesis ──
+  children.push(new Paragraph({ children: [new PageBreak()] }));
+  children.push(
+    new Paragraph({
+      children: [new TextRun({ text: "SYNTHESIS", bold: true, size: 26, font: "Georgia", color: purpleAccent })],
+      spacing: { after: 100 },
+      border: { bottom: { style: BorderStyle.SINGLE, size: 2, color: purpleAccent } },
+    })
+  );
+  children.push(
+    new Paragraph({
+      children: [new TextRun({ text: synthesisPrompt, size: 22, font: "Georgia" })],
+      spacing: { after: 200 },
+      shading: { type: ShadingType.CLEAR, fill: "F3E8FF" },
+    })
+  );
+
+  // Synthesis rubric
+  if (synthesisRubric) {
+    children.push(
+      new Paragraph({
+        children: [new TextRun({ text: "SYNTHESIS RUBRIC", bold: true, size: 22, font: "Georgia", color: purpleAccent })],
+        spacing: { before: 250, after: 100 },
+      })
+    );
+    children.push(
+      new Paragraph({
+        children: [new TextRun({ text: synthesisRubric, size: 20, font: "Georgia" })],
+        spacing: { after: 200 },
+        shading: { type: ShadingType.CLEAR, fill: answerFill },
+      })
+    );
+  }
+
+  return new Document({
+    styles: { default: { document: { run: { size: 22, font: "Georgia" } } } },
+    sections: [{ children }],
+  });
+}
+
 // ── Full Lesson Plan Builder ──
 
 function buildLessonPlanDocx(
@@ -711,6 +1319,12 @@ export async function GET(
         break;
       case "lesson_plan":
         doc = buildLessonPlanDocx(content, lessonTitle);
+        break;
+      case "student_workbook":
+        doc = buildStudentWorkbookDocx(content, lessonTitle);
+        break;
+      case "teacher_guide":
+        doc = buildTeacherGuideDocx(content, lessonTitle);
         break;
       default:
         // Generic fallback — handles student handouts and other section-based resources

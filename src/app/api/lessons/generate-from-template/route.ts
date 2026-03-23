@@ -1,13 +1,14 @@
 import { prisma } from "@/lib/db";
-import Anthropic from "@anthropic-ai/sdk";
+import { createAnthropicClient } from "@/lib/ai";
 
 function substituteTemplate(template: string, config: Record<string, string>): string {
   let result = template;
 
   // Handle {{#field}}...{{/field}} conditional blocks
-  for (const [key, value] of Object.entries(config)) {
+  for (const [key, rawValue] of Object.entries(config)) {
+    const value = rawValue != null ? String(rawValue) : "";
     const conditionalRegex = new RegExp(`\\{\\{#${key}\\}\\}(.*?)\\{\\{/${key}\\}\\}`, "gs");
-    if (value && value.trim()) {
+    if (value.trim()) {
       result = result.replace(conditionalRegex, (_match, content) => {
         return content.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), value);
       });
@@ -17,8 +18,9 @@ function substituteTemplate(template: string, config: Record<string, string>): s
   }
 
   // Handle simple {{field}} substitutions
-  for (const [key, value] of Object.entries(config)) {
-    result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), value || "");
+  for (const [key, rawValue] of Object.entries(config)) {
+    const value = rawValue != null ? String(rawValue) : "";
+    result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), value);
   }
 
   return result;
@@ -191,15 +193,8 @@ function parsePartialLesson(text: string) {
 }
 
 export async function POST(request: Request) {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    return Response.json(
-      { error: "ANTHROPIC_API_KEY is not configured" },
-      { status: 500 }
-    );
-  }
-
   try {
+    const anthropic = createAnthropicClient();
     const body = await request.json();
     const { templateId, config, mode, title, courseId, courseGradeLevel, unitId, currentLesson, feedback } = body;
 
@@ -213,8 +208,6 @@ export async function POST(request: Request) {
 
     const curriculumContext = await getCurriculumContext(courseId, courseGradeLevel || config?.grade);
     const lessonContext = await getLessonContext(courseId, unitId);
-
-    const anthropic = new Anthropic({ apiKey });
 
     const systemPrompt = `You are a curriculum planning assistant helping a teacher build lesson plans for BC (British Columbia) Social Studies (Grades 6-12). Be practical, specific, and engaging. Generate content that is ready to use — not generic or placeholder-like. Always align to BC curriculum standards where possible.
 ${curriculumContext}`;
