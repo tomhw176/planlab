@@ -1,6 +1,45 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 
+// Ensure a value is a plain string — if AI returned an object, convert to readable text
+function toStr(val: unknown): string | undefined {
+  if (val === undefined) return undefined;
+  if (val == null) return "";
+  if (typeof val === "string") return val;
+  if (typeof val === "object") {
+    return objectToText(val as Record<string, unknown>);
+  }
+  return String(val);
+}
+
+function objectToText(obj: Record<string, unknown>, indent = ""): string {
+  const parts: string[] = [];
+  for (const [key, value] of Object.entries(obj)) {
+    if (value == null || value === "") continue;
+    const label = key.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase()).trim();
+    if (typeof value === "string") {
+      parts.push(`${indent}${label}: ${value}`);
+    } else if (Array.isArray(value)) {
+      if (value.length === 0) continue;
+      parts.push(`${indent}${label}:`);
+      for (const item of value) {
+        if (typeof item === "string") {
+          parts.push(`${indent}  • ${item}`);
+        } else if (typeof item === "object" && item) {
+          parts.push(objectToText(item as Record<string, unknown>, indent + "  "));
+          parts.push("");
+        }
+      }
+    } else if (typeof value === "object") {
+      parts.push(`${indent}${label}:`);
+      parts.push(objectToText(value as Record<string, unknown>, indent + "  "));
+    } else {
+      parts.push(`${indent}${label}: ${String(value)}`);
+    }
+  }
+  return parts.join("\n");
+}
+
 // GET /api/lessons — list all lessons (for linking UI)
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -72,21 +111,21 @@ export async function POST(request: Request) {
         creationMode,
         ...(duration && { duration }),
         status,
-        hook,
-        learningObjectives,
-        learningTarget,
-        lessonPurpose,
+        hook: toStr(hook) ?? "",
+        learningObjectives: toStr(learningObjectives) ?? "",
+        learningTarget: toStr(learningTarget) ?? "",
+        lessonPurpose: toStr(lessonPurpose) ?? "",
         curriculumConnection,
-        keyVocabulary,
-        transferableConcepts,
+        keyVocabulary: toStr(keyVocabulary) ?? "",
+        transferableConcepts: toStr(transferableConcepts) ?? "",
         activities,
-        materialsNeeded,
-        differentiation,
-        assessment,
-        scaffolds,
-        extension,
-        closure,
-        notes,
+        materialsNeeded: toStr(materialsNeeded) ?? "",
+        differentiation: toStr(differentiation) ?? "",
+        assessment: toStr(assessment) ?? "",
+        scaffolds: toStr(scaffolds) ?? "",
+        extension: toStr(extension) ?? "",
+        closure: toStr(closure) ?? "",
+        notes: toStr(notes) ?? "",
         ...(unitId && { unitId }),
       },
     });

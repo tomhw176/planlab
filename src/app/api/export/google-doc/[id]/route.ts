@@ -301,6 +301,289 @@ function buildSectionedDocRequests(content: Record<string, unknown>, resourceTit
   return requests;
 }
 
+function buildStudentWorkbookRequests(content: Record<string, unknown>, lessonTitle: string) {
+  const compellingQuestion = (content.compellingQuestion as string) || "";
+  const supportingQuestions = (content.supportingQuestions as string[]) || [];
+  const learningTarget = (content.learningTarget as string) || "";
+  const vocabularyTracker = (content.vocabularyTracker as Array<{
+    term: string; definition: string; contextSentence: string;
+  }>) || [];
+  const sourceAnalysisSections = (content.sourceAnalysisSections as Array<{
+    sourceTitle: string; sourceType: string; sourceAttribution: string;
+    isVerified: boolean; teacherNote: string; contextNote: string;
+    analysisFramework: string; analysisPrompts: string[]; responseLineCount: number;
+  }>) || [];
+  const formativeCheck = (content.formativeCheck as { instructions: string; questions: string[] }) || { instructions: "", questions: [] };
+  const synthesisPrompt = (content.synthesisPrompt as string) || "";
+
+  const requests: object[] = [];
+  const lines: { text: string; bold?: boolean; italic?: boolean; fontSize?: number }[] = [];
+
+  // Title page
+  lines.push({ text: compellingQuestion + "\n\n", bold: true, fontSize: 20 });
+  lines.push({ text: lessonTitle + "\n\n", fontSize: 12 });
+  lines.push({ text: "Name: ______________________________    Date: ______________    Class: ______________\n\n", italic: true });
+  lines.push({ text: "─".repeat(60) + "\n\n" });
+
+  // Supporting Questions
+  lines.push({ text: "SUPPORTING QUESTIONS\n", bold: true, fontSize: 14 });
+  for (const sq of supportingQuestions) {
+    lines.push({ text: `• ${sq}\n` });
+  }
+  lines.push({ text: "\n" });
+
+  // Learning Target
+  lines.push({ text: "LEARNING TARGET\n", bold: true, fontSize: 14 });
+  lines.push({ text: learningTarget + "\n\n" });
+
+  // Vocabulary Tracker
+  if (vocabularyTracker.length > 0) {
+    lines.push({ text: "VOCABULARY TRACKER\n", bold: true, fontSize: 14 });
+    lines.push({ text: "\n" });
+    // Header row
+    lines.push({ text: "Term", bold: true });
+    lines.push({ text: "  |  " });
+    lines.push({ text: "Definition", bold: true });
+    lines.push({ text: "  |  " });
+    lines.push({ text: "Context", bold: true });
+    lines.push({ text: "  |  " });
+    lines.push({ text: "My Notes\n", bold: true });
+    lines.push({ text: "─".repeat(60) + "\n" });
+    for (const v of vocabularyTracker) {
+      lines.push({ text: v.term, bold: true });
+      lines.push({ text: `  |  ${v.definition}  |  ` });
+      lines.push({ text: v.contextSentence, italic: true });
+      lines.push({ text: "  |  _______________\n" });
+    }
+    lines.push({ text: "\n" });
+  }
+
+  // Source Analysis Sections
+  for (let i = 0; i < sourceAnalysisSections.length; i++) {
+    const source = sourceAnalysisSections[i];
+    lines.push({ text: "═".repeat(60) + "\n" });
+    lines.push({ text: `SOURCE ${i + 1}: ${source.sourceTitle}\n`, bold: true, fontSize: 14 });
+    lines.push({ text: `Type: ${source.sourceType}    Attribution: ${source.sourceAttribution}\n`, italic: true });
+
+    if (!source.isVerified && source.teacherNote) {
+      lines.push({ text: `⚠ [TEACHER TO SUPPLY] ${source.teacherNote}\n`, bold: true });
+    }
+
+    if (source.contextNote) {
+      lines.push({ text: `Context: ${source.contextNote}\n`, italic: true });
+    }
+
+    lines.push({ text: "\n" });
+    lines.push({ text: `── ${source.analysisFramework.toUpperCase()} ──\n`, bold: true, fontSize: 12 });
+    lines.push({ text: "\n" });
+
+    const lineCount = source.responseLineCount || 4;
+    for (const prompt of source.analysisPrompts) {
+      lines.push({ text: `• ${prompt}\n` });
+      for (let l = 0; l < lineCount; l++) {
+        lines.push({ text: "_______________________________________________________________\n" });
+      }
+      lines.push({ text: "\n" });
+    }
+  }
+
+  // Formative Check
+  lines.push({ text: "═".repeat(60) + "\n" });
+  lines.push({ text: "FORMATIVE CHECK\n", bold: true, fontSize: 14 });
+  if (formativeCheck.instructions) {
+    lines.push({ text: formativeCheck.instructions + "\n\n", italic: true });
+  }
+  for (let qi = 0; qi < formativeCheck.questions.length; qi++) {
+    lines.push({ text: `${qi + 1}. ${formativeCheck.questions[qi]}\n` });
+    for (let l = 0; l < 4; l++) {
+      lines.push({ text: "_______________________________________________________________\n" });
+    }
+    lines.push({ text: "\n" });
+  }
+
+  // Synthesis
+  lines.push({ text: "═".repeat(60) + "\n" });
+  lines.push({ text: "SYNTHESIS\n", bold: true, fontSize: 14 });
+  lines.push({ text: synthesisPrompt + "\n\n" });
+  for (let l = 0; l < 16; l++) {
+    lines.push({ text: "_______________________________________________________________\n" });
+  }
+
+  const fullText = lines.map((l) => l.text).join("");
+  requests.push({ insertText: { location: { index: 1 }, text: fullText } });
+
+  let offset = 1;
+  for (const part of lines) {
+    const len = part.text.length;
+    if (part.bold || part.italic || part.fontSize) {
+      const style: Record<string, unknown> = {};
+      const fields: string[] = [];
+      if (part.bold) { style.bold = true; fields.push("bold"); }
+      if (part.italic) { style.italic = true; fields.push("italic"); }
+      if (part.fontSize) { style.fontSize = { magnitude: part.fontSize, unit: "PT" }; fields.push("fontSize"); }
+      requests.push({
+        updateTextStyle: {
+          range: { startIndex: offset, endIndex: offset + len },
+          textStyle: style,
+          fields: fields.join(","),
+        },
+      });
+    }
+    offset += len;
+  }
+
+  return requests;
+}
+
+function buildTeacherGuideRequests(content: Record<string, unknown>, lessonTitle: string) {
+  const compellingQuestion = (content.compellingQuestion as string) || "";
+  const supportingQuestions = (content.supportingQuestions as string[]) || [];
+  const learningTarget = (content.learningTarget as string) || "";
+  const vocabularyTracker = (content.vocabularyTracker as Array<{
+    term: string; definition: string; contextSentence: string; teachingStrategy: string;
+  }>) || [];
+  const sourceAnalysisSections = (content.sourceAnalysisSections as Array<{
+    sourceTitle: string; sourceType: string; sourceAttribution: string;
+    isVerified: boolean; teacherNote: string; contextNote: string;
+    analysisFramework: string; analysisPrompts: string[];
+    expectedResponses: string[]; teachingNotes: string; followUpQuestions: string[];
+  }>) || [];
+  const formativeCheck = (content.formativeCheck as {
+    instructions: string; questions: string[]; rubric: string; sampleResponses: string[];
+  }) || { instructions: "", questions: [], rubric: "", sampleResponses: [] };
+  const synthesisPrompt = (content.synthesisPrompt as string) || "";
+  const synthesisRubric = (content.synthesisRubric as string) || "";
+
+  const requests: object[] = [];
+  const lines: { text: string; bold?: boolean; italic?: boolean; fontSize?: number }[] = [];
+
+  // Header
+  lines.push({ text: "TEACHER GUIDE\n", bold: true, fontSize: 20 });
+  lines.push({ text: lessonTitle + "\n", fontSize: 12 });
+  lines.push({ text: compellingQuestion + "\n\n", bold: true, fontSize: 14 });
+  lines.push({ text: "─".repeat(60) + "\n\n" });
+
+  // Supporting Questions
+  lines.push({ text: "SUPPORTING QUESTIONS\n", bold: true, fontSize: 14 });
+  for (const sq of supportingQuestions) {
+    lines.push({ text: `• ${sq}\n` });
+  }
+  lines.push({ text: "\n" });
+
+  // Learning Target
+  lines.push({ text: "LEARNING TARGET\n", bold: true, fontSize: 14 });
+  lines.push({ text: learningTarget + "\n\n" });
+
+  // Vocabulary with Teaching Strategies
+  if (vocabularyTracker.length > 0) {
+    lines.push({ text: "VOCABULARY TRACKER\n", bold: true, fontSize: 14 });
+    lines.push({ text: "\n" });
+    for (const v of vocabularyTracker) {
+      lines.push({ text: v.term, bold: true });
+      lines.push({ text: `: ${v.definition}\n` });
+      lines.push({ text: `  Context: ${v.contextSentence}\n`, italic: true });
+      lines.push({ text: `  Teaching Strategy: `, bold: true });
+      lines.push({ text: `${v.teachingStrategy}\n` });
+      lines.push({ text: "\n" });
+    }
+  }
+
+  // Source Analysis with Expected Responses
+  for (let i = 0; i < sourceAnalysisSections.length; i++) {
+    const source = sourceAnalysisSections[i];
+    lines.push({ text: "═".repeat(60) + "\n" });
+    lines.push({ text: `SOURCE ${i + 1}: ${source.sourceTitle}\n`, bold: true, fontSize: 14 });
+    lines.push({ text: `Type: ${source.sourceType}    Attribution: ${source.sourceAttribution}\n`, italic: true });
+
+    if (!source.isVerified && source.teacherNote) {
+      lines.push({ text: `⚠ [TEACHER TO SUPPLY] ${source.teacherNote}\n`, bold: true });
+    }
+    if (source.contextNote) {
+      lines.push({ text: `Context: ${source.contextNote}\n\n`, italic: true });
+    }
+
+    // Teaching Notes
+    if (source.teachingNotes) {
+      lines.push({ text: "TEACHING NOTES: ", bold: true });
+      lines.push({ text: source.teachingNotes + "\n\n" });
+    }
+
+    lines.push({ text: `── ${source.analysisFramework.toUpperCase()} ──\n\n`, bold: true, fontSize: 12 });
+
+    // Prompts + Expected Responses
+    for (let pi = 0; pi < source.analysisPrompts.length; pi++) {
+      lines.push({ text: `${pi + 1}. ${source.analysisPrompts[pi]}\n` });
+      if (source.expectedResponses?.[pi]) {
+        lines.push({ text: `   ✓ Expected: `, bold: true });
+        lines.push({ text: `${source.expectedResponses[pi]}\n\n` });
+      }
+    }
+
+    // Follow-up Questions
+    if (source.followUpQuestions?.length > 0) {
+      lines.push({ text: "\nFOLLOW-UP QUESTIONS:\n", bold: true });
+      for (const q of source.followUpQuestions) {
+        lines.push({ text: `  → ${q}\n` });
+      }
+    }
+    lines.push({ text: "\n" });
+  }
+
+  // Formative Check with Rubric
+  lines.push({ text: "═".repeat(60) + "\n" });
+  lines.push({ text: "FORMATIVE CHECK\n", bold: true, fontSize: 14 });
+  if (formativeCheck.instructions) {
+    lines.push({ text: formativeCheck.instructions + "\n\n", italic: true });
+  }
+  for (let qi = 0; qi < formativeCheck.questions.length; qi++) {
+    lines.push({ text: `${qi + 1}. ${formativeCheck.questions[qi]}\n\n` });
+  }
+  if (formativeCheck.rubric) {
+    lines.push({ text: "RUBRIC:\n", bold: true });
+    lines.push({ text: formativeCheck.rubric + "\n\n" });
+  }
+  if (formativeCheck.sampleResponses?.length > 0) {
+    lines.push({ text: "SAMPLE RESPONSES:\n", bold: true });
+    for (const r of formativeCheck.sampleResponses) {
+      lines.push({ text: `  ✓ ${r}\n\n` });
+    }
+  }
+
+  // Synthesis + Rubric
+  lines.push({ text: "═".repeat(60) + "\n" });
+  lines.push({ text: "SYNTHESIS\n", bold: true, fontSize: 14 });
+  lines.push({ text: synthesisPrompt + "\n\n" });
+  if (synthesisRubric) {
+    lines.push({ text: "SYNTHESIS RUBRIC:\n", bold: true });
+    lines.push({ text: synthesisRubric + "\n" });
+  }
+
+  const fullText = lines.map((l) => l.text).join("");
+  requests.push({ insertText: { location: { index: 1 }, text: fullText } });
+
+  let offset = 1;
+  for (const part of lines) {
+    const len = part.text.length;
+    if (part.bold || part.italic || part.fontSize) {
+      const style: Record<string, unknown> = {};
+      const fields: string[] = [];
+      if (part.bold) { style.bold = true; fields.push("bold"); }
+      if (part.italic) { style.italic = true; fields.push("italic"); }
+      if (part.fontSize) { style.fontSize = { magnitude: part.fontSize, unit: "PT" }; fields.push("fontSize"); }
+      requests.push({
+        updateTextStyle: {
+          range: { startIndex: offset, endIndex: offset + len },
+          textStyle: style,
+          fields: fields.join(","),
+        },
+      });
+    }
+    offset += len;
+  }
+
+  return requests;
+}
+
 // ── Main Route Handler ──
 
 export async function POST(
@@ -371,6 +654,12 @@ export async function POST(
         break;
       case "lesson_plan":
         batchRequests = buildSectionedDocRequests(content, resource.title, lessonTitle);
+        break;
+      case "student_workbook":
+        batchRequests = buildStudentWorkbookRequests(content, lessonTitle);
+        break;
+      case "teacher_guide":
+        batchRequests = buildTeacherGuideRequests(content, lessonTitle);
         break;
       default:
         // Generic sections-based resource (student handout, etc.)

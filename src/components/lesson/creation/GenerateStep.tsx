@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { ArrowLeft, Loader2, Check, RefreshCw, Send, Sparkles } from "lucide-react";
-import { lastConfig, lastMode } from "./ConfigureStep";
+import { lastConfig, lastMode, lastSliders, lastConstraints } from "./ConfigureStep";
 
 interface LessonTemplate {
   id: string;
@@ -188,6 +188,11 @@ export function GenerateStep({
           unitId,
           courseId,
           courseGradeLevel,
+          sliders: lastSliders,
+          constraints: lastConstraints,
+          classCharacteristics: lastConfig.classCharacteristics,
+          learningObjective: lastConfig.learningObjective,
+          purposeNotes: lastConfig.purposeNotes,
         }),
       });
       if (!res.ok) throw new Error("Failed to generate");
@@ -217,6 +222,11 @@ export function GenerateStep({
           unitId,
           courseId,
           courseGradeLevel,
+          sliders: lastSliders,
+          constraints: lastConstraints,
+          classCharacteristics: lastConfig.classCharacteristics,
+          learningObjective: lastConfig.learningObjective,
+          purposeNotes: lastConfig.purposeNotes,
         }),
       });
       if (!res.ok) throw new Error("Failed to generate");
@@ -250,6 +260,11 @@ export function GenerateStep({
           courseId,
           courseGradeLevel,
           summary,
+          sliders: lastSliders,
+          constraints: lastConstraints,
+          classCharacteristics: lastConfig.classCharacteristics,
+          learningObjective: lastConfig.learningObjective,
+          purposeNotes: lastConfig.purposeNotes,
         }),
       });
       if (!res.ok) throw new Error("Failed to build");
@@ -292,6 +307,8 @@ export function GenerateStep({
           courseGradeLevel,
           currentLesson: selected,
           feedback: userMsg,
+          sliders: lastSliders,
+          constraints: lastConstraints,
         }),
       });
       if (!res.ok) throw new Error("Failed to iterate");

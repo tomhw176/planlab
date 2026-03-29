@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import { ChoosePathStep } from "./creation/ChoosePathStep";
+import { ConfigureStep, setLastMode, updateSlidersFromTemplate } from "./creation/ConfigureStep";
+import type { LessonConfig, SliderValues, ConstraintValues } from "./creation/ConfigureStep";
 import { TemplateSelectStep } from "./creation/TemplateSelectStep";
-import { ConfigureStep } from "./creation/ConfigureStep";
 import { GenerateStep } from "./creation/GenerateStep";
 import { ResourcesPanel } from "./ResourcesPanel";
 import type { ViewState } from "@/app/page";
@@ -17,6 +18,8 @@ interface LessonTemplate {
     icon?: string;
     color?: string;
     sections: string[];
+    defaultSliders?: SliderValues;
+    bestUseCases?: string[];
   };
   requiredFields: Array<{
     field: string;
@@ -46,7 +49,7 @@ interface CreateLessonModalProps {
   onNavigate: (view: ViewState) => void;
 }
 
-type Step = "choose" | "template" | "configure" | "generate" | "resources";
+type Step = "choose" | "configure" | "template" | "generate" | "resources";
 
 export function CreateLessonModal({
   unitId,
@@ -62,6 +65,15 @@ export function CreateLessonModal({
   const [selectedTemplate, setSelectedTemplate] = useState<LessonTemplate | null>(null);
   const [templates, setTemplates] = useState<LessonTemplate[]>([]);
   const [createdLessonId, setCreatedLessonId] = useState<string | null>(null);
+
+  // Store config/sliders/constraints from ConfigureStep for TemplateSelectStep
+  const [lessonConfig, setLessonConfig] = useState<LessonConfig | null>(null);
+  const [lessonSliders, setLessonSliders] = useState<SliderValues>({
+    prepDemand: 3, teacherDirection: 3, collaboration: 3, assessmentEvidence: 3, managementComplexity: 3,
+  });
+  const [lessonConstraints, setLessonConstraints] = useState<ConstraintValues>({
+    noTechRequired: false, chromebooksAvailable: false, phonesAvailable: false,
+  });
 
   useEffect(() => {
     fetch("/api/templates")
@@ -89,19 +101,26 @@ export function CreateLessonModal({
     }
   };
 
-  const handleSelectTemplate = (template: LessonTemplate) => {
-    setSelectedTemplate(template);
-    setStep("configure");
+  const handleConfigure = (config: LessonConfig, sliders: SliderValues, constraints: ConstraintValues) => {
+    setLessonConfig(config);
+    setLessonSliders(sliders);
+    setLessonConstraints(constraints);
+    setStep("template");
   };
 
-  const handleGenerate = () => {
+  const handleSelectTemplate = (template: LessonTemplate, mode: "auto" | "options") => {
+    setSelectedTemplate(template);
+    setLastMode(mode);
+    // Update sliders to template defaults if user hasn't customized
+    if (template.structure?.defaultSliders) {
+      updateSlidersFromTemplate(template.structure.defaultSliders);
+    }
     setStep("generate");
   };
 
   const handleLessonCreated = (lessonId: string) => {
     setCreatedLessonId(lessonId);
     onCreated(lessonId);
-    // If a template is selected, go to resources step; otherwise go straight to lesson
     if (selectedTemplate) {
       setStep("resources");
     } else {
@@ -119,13 +138,13 @@ export function CreateLessonModal({
 
   const stepLabels: Record<Step, string> = {
     choose: "Create Lesson",
+    configure: "Lesson Details",
     template: "Choose Template",
-    configure: "Configure",
     generate: "Preview & Iterate",
     resources: "Generate Resources",
   };
 
-  const steps: Step[] = ["choose", "template", "configure", "generate", "resources"];
+  const steps: Step[] = ["choose", "configure", "template", "generate", "resources"];
   const currentIndex = steps.indexOf(step);
 
   return (
@@ -135,10 +154,9 @@ export function CreateLessonModal({
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <div className="flex items-center gap-4">
             <h2 className="text-lg font-bold">{stepLabels[step]}</h2>
-            {/* Step indicator */}
             {step !== "choose" && (
               <div className="flex items-center gap-1.5">
-                {steps.slice(1).map((s, i) => (
+                {steps.slice(1).map((s) => (
                   <div
                     key={s}
                     className={`w-2 h-2 rounded-full transition-all ${
@@ -166,27 +184,29 @@ export function CreateLessonModal({
               title={title}
               onTitleChange={setTitle}
               onScratch={handleScratch}
-              onTemplate={() => setStep("template")}
+              onTemplate={() => setStep("configure")}
             />
           )}
 
-          {step === "template" && (
-            <TemplateSelectStep
-              templates={templates}
-              onSelect={handleSelectTemplate}
-              onBack={() => setStep("choose")}
-            />
-          )}
-
-          {step === "configure" && selectedTemplate && (
+          {step === "configure" && (
             <ConfigureStep
-              template={selectedTemplate}
               title={title}
               onTitleChange={setTitle}
               courseGradeLevel={courseGradeLevel}
               courseDefaults={courseDefaults}
-              onGenerate={handleGenerate}
-              onBack={() => setStep("template")}
+              onContinue={handleConfigure}
+              onBack={() => setStep("choose")}
+            />
+          )}
+
+          {step === "template" && lessonConfig && (
+            <TemplateSelectStep
+              templates={templates}
+              config={lessonConfig}
+              sliders={lessonSliders}
+              constraints={lessonConstraints}
+              onSelect={handleSelectTemplate}
+              onBack={() => setStep("configure")}
             />
           )}
 
@@ -198,7 +218,7 @@ export function CreateLessonModal({
               courseId={courseId}
               courseGradeLevel={courseGradeLevel}
               onCreated={handleLessonCreated}
-              onBack={() => setStep("configure")}
+              onBack={() => setStep("template")}
             />
           )}
 

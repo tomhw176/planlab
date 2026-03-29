@@ -1,14 +1,13 @@
 import { prisma } from "@/lib/db";
-import { createAnthropicClient } from "@/lib/ai";
+import Anthropic from "@anthropic-ai/sdk";
 
 function substituteTemplate(template: string, config: Record<string, string>): string {
   let result = template;
 
   // Handle {{#field}}...{{/field}} conditional blocks
-  for (const [key, rawValue] of Object.entries(config)) {
-    const value = rawValue != null ? String(rawValue) : "";
+  for (const [key, value] of Object.entries(config)) {
     const conditionalRegex = new RegExp(`\\{\\{#${key}\\}\\}(.*?)\\{\\{/${key}\\}\\}`, "gs");
-    if (value.trim()) {
+    if (value && value.trim()) {
       result = result.replace(conditionalRegex, (_match, content) => {
         return content.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), value);
       });
@@ -18,9 +17,8 @@ function substituteTemplate(template: string, config: Record<string, string>): s
   }
 
   // Handle simple {{field}} substitutions
-  for (const [key, rawValue] of Object.entries(config)) {
-    const value = rawValue != null ? String(rawValue) : "";
-    result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), value);
+  for (const [key, value] of Object.entries(config)) {
+    result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), value || "");
   }
 
   return result;
@@ -93,6 +91,69 @@ async function getLessonContext(courseId?: string, unitId?: string): Promise<Rec
   }
 
   return context;
+}
+
+interface SliderValues {
+  prepDemand: number;
+  teacherDirection: number;
+  collaboration: number;
+  assessmentEvidence: number;
+  managementComplexity: number;
+}
+
+interface ConstraintValues {
+  noTechRequired: boolean;
+  chromebooksAvailable: boolean;
+  phonesAvailable: boolean;
+}
+
+function buildAdaptationContext(
+  sliders?: SliderValues,
+  constraints?: ConstraintValues,
+  classCharacteristics?: string,
+  learningObjective?: string,
+  purposeNotes?: string
+): string {
+  const parts: string[] = [];
+
+  if (learningObjective?.trim()) {
+    parts.push(`Learning Objective: ${learningObjective.trim()}`);
+  }
+  if (purposeNotes?.trim()) {
+    parts.push(`Teacher Vision / Notes: ${purposeNotes.trim()}`);
+  }
+  if (classCharacteristics?.trim()) {
+    parts.push(`Class Characteristics / Student Preferences: ${classCharacteristics.trim()}`);
+  }
+
+  if (sliders) {
+    const sliderLabels: Record<keyof SliderValues, [string, string, string]> = {
+      prepDemand: ["Prep Demand", "low", "high"],
+      teacherDirection: ["Teacher Direction", "student-led", "teacher-led"],
+      collaboration: ["Collaboration", "individual", "collaborative"],
+      assessmentEvidence: ["Assessment Evidence", "low", "high"],
+      managementComplexity: ["Management Complexity", "simple", "complex"],
+    };
+    const lines: string[] = [];
+    for (const [key, [label, low, high]] of Object.entries(sliderLabels)) {
+      const val = sliders[key as keyof SliderValues];
+      const desc = val <= 2 ? low : val >= 4 ? high : "balanced";
+      lines.push(`- ${label}: ${val}/5 (${desc})`);
+    }
+    parts.push(`\nSLIDER SETTINGS (adapt the lesson design accordingly):\n${lines.join("\n")}`);
+  }
+
+  if (constraints) {
+    const active: string[] = [];
+    if (constraints.noTechRequired) active.push("No teacher tech available — all materials must be fully analog and printable");
+    if (constraints.chromebooksAvailable) active.push("1-to-1 Chromebooks available for students");
+    if (constraints.phonesAvailable) active.push("Student phones / tablets available");
+    if (active.length > 0) {
+      parts.push(`\nCONSTRAINTS:\n${active.map((c) => `- ${c}`).join("\n")}`);
+    }
+  }
+
+  return parts.length > 0 ? "\n\nADDITIONAL CONTEXT:\n" + parts.join("\n") : "";
 }
 
 function parseLesson(content: string) {
@@ -193,10 +254,18 @@ function parsePartialLesson(text: string) {
 }
 
 export async function POST(request: Request) {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    return Response.json(
+      { error: "ANTHROPIC_API_KEY is not configured" },
+      { status: 500 }
+    );
+  }
+
   try {
-    const anthropic = createAnthropicClient();
     const body = await request.json();
-    const { templateId, config, mode, title, courseId, courseGradeLevel, unitId, currentLesson, feedback } = body;
+    const { templateId, config, mode, title, courseId, courseGradeLevel, unitId, currentLesson, feedback,
+      sliders, constraints, classCharacteristics, learningObjective, purposeNotes } = body;
 
     const template = await prisma.lessonTemplate.findUnique({
       where: { id: templateId },
@@ -209,7 +278,20 @@ export async function POST(request: Request) {
     const curriculumContext = await getCurriculumContext(courseId, courseGradeLevel || config?.grade);
     const lessonContext = await getLessonContext(courseId, unitId);
 
+    const anthropic = new Anthropic({ apiKey });
+
     const systemPrompt = `You are a curriculum planning assistant helping a teacher build lesson plans for BC (British Columbia) Social Studies (Grades 6-12). Be practical, specific, and engaging. Generate content that is ready to use — not generic or placeholder-like. Always align to BC curriculum standards where possible.
+
+IMPORTANT: The "learningTarget" field in your JSON output must be structured with these components:
+1. A simple, student-facing learning target written in "I can..." language (1-2 sentences)
+2. Success Criteria: 3-4 specific, observable criteria that show students have met the target
+3. Three Inquiry Questions:
+   - Factual: A knowledge-based question with a definitive answer
+   - Conceptual: A transferable question about patterns, causes, or significance that applies beyond this specific topic
+   - Debatable: An open question that reasonable people could disagree on, requiring evidence and reasoning
+
+Format the learningTarget field as:
+"I can [target].\\n\\nSuccess Criteria:\\n- [criterion 1]\\n- [criterion 2]\\n- [criterion 3]\\n\\nInquiry Questions:\\nFactual: [question]\\nConceptual: [question]\\nDebatable: [question]"
 ${curriculumContext}`;
 
     // ITERATE mode — stays non-streaming (fast enough, needs atomic update)
@@ -237,13 +319,15 @@ Important: Return the full lesson JSON, not just the changed parts. Make the cha
       return Response.json({ lesson });
     }
 
+    const adaptationContext = buildAdaptationContext(sliders, constraints, classCharacteristics || config?.classCharacteristics, learningObjective || config?.learningObjective, purposeNotes || config?.purposeNotes);
+
     // AUTO mode — streaming
     if (mode === "auto") {
       const prompt = substituteTemplate(template.promptTemplate as string, {
         ...config,
         ...lessonContext,
         title: title || "",
-      });
+      }) + adaptationContext;
 
       // Use higher token limit for rich templates (Historical Decision-Making, etc.)
       const isRichTemplate = (template.promptTemplate as string).length > 2000;
@@ -311,7 +395,7 @@ Important: Return the full lesson JSON, not just the changed parts. Make the cha
         ...config,
         ...lessonContext,
         title: title || "",
-      });
+      }) + adaptationContext;
 
       const summariesPrompt = `${basePrompt}
 
@@ -358,7 +442,7 @@ Make each variation meaningfully different — different engagement strategies, 
         ...config,
         ...lessonContext,
         title: title || "",
-      });
+      }) + adaptationContext;
 
       const buildPrompt = `${basePrompt}
 

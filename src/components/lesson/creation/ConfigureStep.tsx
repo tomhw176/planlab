@@ -1,30 +1,30 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { ArrowLeft, Sparkles, LayoutGrid } from "lucide-react";
+import { useState } from "react";
+import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, SlidersHorizontal } from "lucide-react";
 
-interface RequiredField {
-  field: string;
-  label: string;
-  type: string;
-  required?: boolean;
-  default?: number | string;
-  useDefault?: string;
-  options?: string[];
-  placeholder?: string;
+export interface SliderValues {
+  prepDemand: number;
+  teacherDirection: number;
+  collaboration: number;
+  assessmentEvidence: number;
+  managementComplexity: number;
 }
 
-interface LessonTemplate {
-  id: string;
-  name: string;
-  description: string;
-  structure: {
-    icon?: string;
-    color?: string;
-    sections: string[];
-  };
-  requiredFields: RequiredField[];
-  promptTemplate: string;
+export interface ConstraintValues {
+  noTechRequired: boolean;
+  chromebooksAvailable: boolean;
+  phonesAvailable: boolean;
+}
+
+export interface LessonConfig {
+  topic: string;
+  grade: string;
+  students: string;
+  duration: string;
+  classCharacteristics: string;
+  learningObjective: string;
+  purposeNotes: string;
 }
 
 interface CourseDefaults {
@@ -33,67 +33,112 @@ interface CourseDefaults {
 }
 
 interface Props {
-  template: LessonTemplate;
   title: string;
   onTitleChange: (title: string) => void;
   courseGradeLevel?: string;
   courseDefaults?: CourseDefaults;
-  onGenerate: () => void;
+  onContinue: (config: LessonConfig, sliders: SliderValues, constraints: ConstraintValues) => void;
   onBack: () => void;
 }
 
 // Store config globally so GenerateStep can access it
 export let lastConfig: Record<string, string> = {};
 export let lastMode: "auto" | "options" = "auto";
+export let lastSliders: SliderValues = {
+  prepDemand: 3,
+  teacherDirection: 3,
+  collaboration: 3,
+  assessmentEvidence: 3,
+  managementComplexity: 3,
+};
+export let lastConstraints: ConstraintValues = {
+  noTechRequired: false,
+  chromebooksAvailable: false,
+  phonesAvailable: false,
+};
+
+export function setLastMode(mode: "auto" | "options") {
+  lastMode = mode;
+}
+
+export function updateSlidersFromTemplate(templateSliders: SliderValues) {
+  lastSliders = { ...templateSliders };
+}
+
+const SLIDER_CONFIG: {
+  key: keyof SliderValues;
+  label: string;
+  low: string;
+  high: string;
+}[] = [
+  { key: "prepDemand", label: "Prep Demand", low: "Low", high: "High" },
+  { key: "teacherDirection", label: "Teacher Direction", low: "Student-led", high: "Teacher-led" },
+  { key: "collaboration", label: "Collaboration", low: "Individual", high: "Collaborative" },
+  { key: "assessmentEvidence", label: "Assessment Evidence", low: "Low", high: "High" },
+  { key: "managementComplexity", label: "Management Complexity", low: "Simple", high: "Complex" },
+];
 
 export function ConfigureStep({
-  template,
   title,
   onTitleChange,
   courseGradeLevel,
   courseDefaults,
-  onGenerate,
+  onContinue,
   onBack,
 }: Props) {
-  const [config, setConfig] = useState<Record<string, string>>({});
+  // Class Info
+  const [grade, setGrade] = useState(courseGradeLevel || "");
+  const [numStudents, setNumStudents] = useState(String(courseDefaults?.numStudents || 30));
+  const [duration, setDuration] = useState(String(courseDefaults?.lessonDuration || 60));
+  const [classCharacteristics, setClassCharacteristics] = useState("");
 
-  // Initialize defaults
-  useEffect(() => {
-    const defaults: Record<string, string> = {};
-    for (const field of template.requiredFields) {
-      if (field.useDefault === "gradeLevel" && courseGradeLevel) {
-        defaults[field.field] = courseGradeLevel;
-      } else if (field.useDefault === "numStudents" && courseDefaults?.numStudents) {
-        defaults[field.field] = String(courseDefaults.numStudents);
-      } else if (field.useDefault === "lessonDuration" && courseDefaults?.lessonDuration) {
-        defaults[field.field] = String(courseDefaults.lessonDuration);
-      } else if (field.default !== undefined) {
-        defaults[field.field] = String(field.default);
-      }
-    }
-    setConfig(defaults);
-  }, [template, courseGradeLevel, courseDefaults]);
+  // Lesson Purpose
+  const [topic, setTopic] = useState("");
+  const [learningObjective, setLearningObjective] = useState("");
+  const [purposeNotes, setPurposeNotes] = useState("");
 
-  const updateField = (field: string, value: string) => {
-    setConfig((prev) => ({ ...prev, [field]: value }));
+  // Customize
+  const [customizeOpen, setCustomizeOpen] = useState(false);
+  const [sliders, setSliders] = useState<SliderValues>({
+    prepDemand: 3,
+    teacherDirection: 3,
+    collaboration: 3,
+    assessmentEvidence: 3,
+    managementComplexity: 3,
+  });
+  const [constraints, setConstraints] = useState<ConstraintValues>({
+    noTechRequired: false,
+    chromebooksAvailable: false,
+    phonesAvailable: false,
+  });
+
+  const updateSlider = (key: keyof SliderValues, value: number) => {
+    setSliders((prev) => ({ ...prev, [key]: value }));
   };
 
   const isValid = () => {
-    for (const field of template.requiredFields) {
-      if (field.required !== false && !config[field.field]?.trim()) {
-        return false;
-      }
-    }
-    return true;
+    return topic.trim().length > 0 && grade.trim().length > 0;
   };
 
-  const handleGenerate = (mode: "auto" | "options") => {
+  const handleContinue = () => {
+    const config: LessonConfig = {
+      topic,
+      grade,
+      students: numStudents,
+      duration,
+      classCharacteristics,
+      learningObjective,
+      purposeNotes,
+    };
+    // Store globally for GenerateStep access
     lastConfig = { ...config };
-    lastMode = mode;
-    onGenerate();
+    lastSliders = { ...sliders };
+    lastConstraints = { ...constraints };
+    onContinue(config, sliders, constraints);
   };
 
-  const color = template.structure?.color || "#6366f1";
+  const slidersModified = Object.values(sliders).some((v) => v !== 3);
+  const constraintsActive = constraints.noTechRequired || constraints.chromebooksAvailable || constraints.phonesAvailable;
 
   return (
     <div className="space-y-5">
@@ -102,22 +147,8 @@ export function ConfigureStep({
         className="flex items-center gap-1.5 text-sm text-muted hover:text-primary transition-colors"
       >
         <ArrowLeft size={14} />
-        Back to templates
+        Back
       </button>
-
-      {/* Template header */}
-      <div className="flex items-center gap-3 p-4 rounded-xl border border-border bg-background">
-        <div
-          className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
-          style={{ backgroundColor: color + "20" }}
-        >
-          <Sparkles size={18} style={{ color }} />
-        </div>
-        <div>
-          <h3 className="font-bold text-sm">{template.name}</h3>
-          <p className="text-xs text-muted">{template.description}</p>
-        </div>
-      </div>
 
       {/* Title (if not yet set) */}
       {!title.trim() && (
@@ -133,81 +164,193 @@ export function ConfigureStep({
         </div>
       )}
 
-      {/* Required fields */}
-      <div className="space-y-4">
-        {template.requiredFields.map((field) => (
-          <div key={field.field}>
-            <label className="block text-sm font-semibold mb-1.5">
-              {field.label}
-              {field.required === false && (
-                <span className="text-xs text-muted font-normal ml-1">(optional)</span>
-              )}
-            </label>
-
-            {field.type === "text" && (
-              <input
-                type="text"
-                value={config[field.field] || ""}
-                onChange={(e) => updateField(field.field, e.target.value)}
-                placeholder={field.placeholder || ""}
-                className="w-full px-3 py-2.5 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 bg-background"
-              />
-            )}
-
-            {field.type === "textarea" && (
-              <textarea
-                value={config[field.field] || ""}
-                onChange={(e) => updateField(field.field, e.target.value)}
-                placeholder={field.placeholder || ""}
-                rows={3}
-                className="w-full px-3 py-2.5 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 bg-background resize-none"
-              />
-            )}
-
-            {field.type === "number" && (
-              <input
-                type="number"
-                value={config[field.field] || ""}
-                onChange={(e) => updateField(field.field, e.target.value)}
-                className="w-32 px-3 py-2.5 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 bg-background"
-              />
-            )}
-
-            {field.type === "select" && field.options && (
-              <select
-                value={config[field.field] || ""}
-                onChange={(e) => updateField(field.field, e.target.value)}
-                className="w-full px-3 py-2.5 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 bg-background"
-              >
-                <option value="">Select...</option>
-                {field.options.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {field.field === "grade" ? `Grade ${opt}` : opt}
-                  </option>
-                ))}
-              </select>
-            )}
+      {/* Section A: Class Info */}
+      <div className="space-y-3">
+        <h4 className="text-xs font-bold text-muted uppercase tracking-wider">Class Info</h4>
+        <div className="grid grid-cols-3 gap-3">
+          <div>
+            <label className="block text-xs font-medium mb-1">Grade</label>
+            <select
+              value={grade}
+              onChange={(e) => setGrade(e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 bg-background"
+            >
+              <option value="">Select...</option>
+              {["6", "7", "8", "9", "10", "11", "12"].map((g) => (
+                <option key={g} value={g}>Grade {g}</option>
+              ))}
+            </select>
           </div>
-        ))}
+          <div>
+            <label className="block text-xs font-medium mb-1">Students</label>
+            <input
+              type="number"
+              value={numStudents}
+              onChange={(e) => setNumStudents(e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 bg-background"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium mb-1">Duration (min)</label>
+            <input
+              type="number"
+              value={duration}
+              onChange={(e) => setDuration(e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 bg-background"
+            />
+          </div>
+        </div>
+        <div>
+          <label className="block text-xs font-medium mb-1">
+            Class Characteristics / Student Preferences
+            <span className="text-muted font-normal ml-1">(optional)</span>
+          </label>
+          <textarea
+            value={classCharacteristics}
+            onChange={(e) => setClassCharacteristics(e.target.value)}
+            placeholder="e.g. Strong verbal skills but reluctant writers, mixed reading levels, high energy class..."
+            rows={2}
+            className="w-full px-3 py-2 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 bg-background resize-none"
+          />
+        </div>
       </div>
 
-      {/* Action buttons */}
-      <div className="flex gap-3 pt-2">
+      {/* Section B: Lesson Purpose */}
+      <div className="space-y-3">
+        <h4 className="text-xs font-bold text-muted uppercase tracking-wider">Lesson Purpose</h4>
+        <div>
+          <label className="block text-xs font-medium mb-1">Topic</label>
+          <input
+            type="text"
+            value={topic}
+            onChange={(e) => setTopic(e.target.value)}
+            placeholder="e.g. The French Revolution, Causes of WWI, Treaty of Versailles..."
+            className="w-full px-3 py-2.5 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 bg-background"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium mb-1">
+            Learning Objective
+            <span className="text-muted font-normal ml-1">(optional)</span>
+          </label>
+          <textarea
+            value={learningObjective}
+            onChange={(e) => setLearningObjective(e.target.value)}
+            placeholder="e.g. Students will evaluate the causes of the revolution and assess the role of social inequality..."
+            rows={2}
+            className="w-full px-3 py-2 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 bg-background resize-none"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium mb-1">
+            Purpose / Vision / Notes
+            <span className="text-muted font-normal ml-1">(optional)</span>
+          </label>
+          <textarea
+            value={purposeNotes}
+            onChange={(e) => setPurposeNotes(e.target.value)}
+            placeholder="Any other context: specific skills to emphasize, connections to previous lessons, student interests..."
+            rows={2}
+            className="w-full px-3 py-2 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 bg-background resize-none"
+          />
+        </div>
+      </div>
+
+      {/* Section C: Customize (expandable) */}
+      <div className="border border-border rounded-xl overflow-hidden">
         <button
-          onClick={() => handleGenerate("auto")}
-          disabled={!isValid()}
-          className="flex-1 flex items-center justify-center gap-2 py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          onClick={() => setCustomizeOpen(!customizeOpen)}
+          className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold hover:bg-surface-hover transition-colors"
         >
-          <Sparkles size={16} />
-          Generate Automatically
+          <div className="flex items-center gap-2">
+            <SlidersHorizontal size={14} className="text-muted" />
+            <span>Customize</span>
+            {(slidersModified || constraintsActive) && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                Modified
+              </span>
+            )}
+          </div>
+          {customizeOpen ? <ChevronUp size={14} className="text-muted" /> : <ChevronDown size={14} className="text-muted" />}
         </button>
+
+        {customizeOpen && (
+          <div className="px-4 pb-4 space-y-5 border-t border-border">
+            {/* Sliders */}
+            <div className="pt-3 space-y-4">
+              <h5 className="text-xs font-bold text-muted uppercase tracking-wider">Lesson Style</h5>
+              {SLIDER_CONFIG.map(({ key, label, low, high }) => (
+                <div key={key}>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-medium">{label}</label>
+                    <span className="text-[10px] text-muted">
+                      {sliders[key] <= 2 ? low : sliders[key] >= 4 ? high : "Balanced"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-[10px] text-muted w-16 text-right shrink-0">{low}</span>
+                    <input
+                      type="range"
+                      min={1}
+                      max={5}
+                      value={sliders[key]}
+                      onChange={(e) => updateSlider(key, parseInt(e.target.value))}
+                      className="flex-1 h-1.5 appearance-none bg-border rounded-full cursor-pointer"
+                      style={{ accentColor: "#6366f1" }}
+                    />
+                    <span className="text-[10px] text-muted w-16 shrink-0">{high}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Constraints */}
+            <div className="space-y-3">
+              <h5 className="text-xs font-bold text-muted uppercase tracking-wider">Constraints</h5>
+              <label className="flex items-center gap-2.5 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={constraints.noTechRequired}
+                  onChange={(e) => setConstraints((prev) => ({ ...prev, noTechRequired: e.target.checked }))}
+                  className="rounded border-border"
+                  style={{ accentColor: "#6366f1" }}
+                />
+                <span>No tech required for teacher</span>
+              </label>
+              <label className="flex items-center gap-2.5 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={constraints.chromebooksAvailable}
+                  onChange={(e) => setConstraints((prev) => ({ ...prev, chromebooksAvailable: e.target.checked }))}
+                  className="rounded border-border"
+                  style={{ accentColor: "#6366f1" }}
+                />
+                <span>1-to-1 Chromebooks available</span>
+              </label>
+              <label className="flex items-center gap-2.5 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={constraints.phonesAvailable}
+                  onChange={(e) => setConstraints((prev) => ({ ...prev, phonesAvailable: e.target.checked }))}
+                  className="rounded border-border"
+                  style={{ accentColor: "#6366f1" }}
+                />
+                <span>Student phones / tablets available</span>
+              </label>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Continue button */}
+      <div className="pt-2">
         <button
-          onClick={() => handleGenerate("options")}
+          onClick={handleContinue}
           disabled={!isValid()}
-          className="flex-1 flex items-center justify-center gap-2 py-3 border-2 border-primary text-primary font-semibold rounded-xl hover:bg-primary/5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          className="w-full flex items-center justify-center gap-2 py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          <LayoutGrid size={16} />
-          Give Me Options
+          Continue
+          <ArrowRight size={16} />
         </button>
       </div>
     </div>

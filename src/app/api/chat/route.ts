@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import Anthropic from "@anthropic-ai/sdk";
 import { createAnthropicClient } from "@/lib/ai";
 
 const SYSTEM_PROMPT = `You are a curriculum planning assistant for PlanLab, a tool designed to help teachers plan and organize their courses, units, and lessons. You help with:

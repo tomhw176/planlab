@@ -17,6 +17,7 @@ import {
   ExternalLink,
   FolderOpen,
 } from "lucide-react";
+import { ResourceContentPreview } from "./ResourceContentPreview";
 
 declare global {
   interface Window {
@@ -579,90 +580,102 @@ export function ResourcesPanel({
           return (
             <div
               key={i}
-              className="flex items-center gap-3 p-3 rounded-xl border border-border bg-surface transition-all"
+              className="rounded-xl border border-border bg-surface transition-all overflow-hidden"
               style={
                 item.status === "complete"
                   ? { borderColor: color + "30" }
                   : undefined
               }
             >
-              <div
-                className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-                style={{ backgroundColor: color + "15" }}
-              >
-                <Icon size={16} style={{ color }} />
-              </div>
+              <div className="flex items-center gap-3 p-3">
+                <div
+                  className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                  style={{ backgroundColor: color + "15" }}
+                >
+                  <Icon size={16} style={{ color }} />
+                </div>
 
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-sm truncate">{item.title}</p>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span
-                    className="text-[10px] font-semibold uppercase tracking-wider"
-                    style={{ color }}
-                  >
-                    {label}
-                  </span>
-                  <span className="text-[10px] text-muted">• {ext}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm truncate">{item.title}</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span
+                      className="text-[10px] font-semibold uppercase tracking-wider"
+                      style={{ color }}
+                    >
+                      {label}
+                    </span>
+                    <span className="text-[10px] text-muted">• {ext}</span>
+                  </div>
+                </div>
+
+                <div className="shrink-0 flex items-center gap-1">
+                  {item.status === "generating" && (
+                    <Loader2 size={16} className="animate-spin text-muted" />
+                  )}
+                  {item.status === "complete" && item.resource && (
+                    <>
+                      <button
+                        onClick={() =>
+                          handleDownload(item.resource!.id, item.resource!.title, item.resource!.type)
+                        }
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors hover:bg-surface-hover"
+                        style={{ color }}
+                      >
+                        <Download size={14} />
+                        Download
+                      </button>
+                      {googleDocUrls[item.resource!.id] ? (
+                          <a
+                            href={googleDocUrls[item.resource!.id]}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors hover:bg-surface-hover text-blue-600"
+                          >
+                            <ExternalLink size={14} />
+                            {item.type === "slides" ? "Open Slides" : "Open Doc"}
+                          </a>
+                        ) : (
+                          <button
+                            onClick={() => handleSendToGoogle(item.resource!.id, item.type)}
+                            disabled={sendingToGoogle[item.resource!.id]}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors hover:bg-surface-hover text-blue-600 disabled:opacity-50"
+                          >
+                            {sendingToGoogle[item.resource!.id] ? (
+                              <Loader2 size={14} className="animate-spin" />
+                            ) : (
+                              <svg viewBox="0 0 87.3 78" width={14} height={12} fill="currentColor">
+                                <path d="M6.6 66.85l3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8H0c0 1.55.4 3.1 1.2 4.5l5.4 9.35z" fill="#0066DA"/>
+                                <path d="M43.65 25.15L29.9 1.35c-1.35.8-2.5 1.9-3.3 3.3L1.2 46.5c-.8 1.4-1.2 2.95-1.2 4.5h27.5l16.15-25.85z" fill="#00AC47"/>
+                                <path d="M73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5H59.8l6.3 11.5 7.45 12.3z" fill="#EA4335"/>
+                                <path d="M43.65 25.15L57.4 1.35C56.05.55 54.5 0 52.85 0H34.45c-1.65 0-3.2.55-4.55 1.35l13.75 23.8z" fill="#00832D"/>
+                                <path d="M59.8 53h27.5c0-1.55-.4-3.1-1.2-4.5L73.45 28.1c-.8-1.4-1.95-2.5-3.3-3.3L57.4 1.35 43.65 25.15l16.15 27.85z" fill="#2684FC"/>
+                                <path d="M27.5 53L13.75 76.8c1.35.8 2.9 1.2 4.55 1.2H69.1c1.65 0 3.2-.4 4.55-1.2L59.8 53H27.5z" fill="#FFBA00"/>
+                              </svg>
+                            )}
+                            {item.type === "slides" ? "Google Slides" : "Google Docs"}
+                          </button>
+                        )
+                      }
+                    </>
+                  )}
+                  {item.status === "error" && (
+                    <div className="flex items-center gap-1.5 text-xs text-red-500">
+                      <AlertCircle size={14} />
+                      Failed
+                    </div>
+                  )}
                 </div>
               </div>
 
-              <div className="shrink-0 flex items-center gap-1">
-                {item.status === "generating" && (
-                  <Loader2 size={16} className="animate-spin text-muted" />
-                )}
-                {item.status === "complete" && item.resource && (
-                  <>
-                    <button
-                      onClick={() =>
-                        handleDownload(item.resource!.id, item.resource!.title, item.resource!.type)
-                      }
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors hover:bg-surface-hover"
-                      style={{ color }}
-                    >
-                      <Download size={14} />
-                      Download
-                    </button>
-                    {googleDocUrls[item.resource!.id] ? (
-                        <a
-                          href={googleDocUrls[item.resource!.id]}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors hover:bg-surface-hover text-blue-600"
-                        >
-                          <ExternalLink size={14} />
-                          {item.type === "slides" ? "Open Slides" : "Open Doc"}
-                        </a>
-                      ) : (
-                        <button
-                          onClick={() => handleSendToGoogle(item.resource!.id, item.type)}
-                          disabled={sendingToGoogle[item.resource!.id]}
-                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors hover:bg-surface-hover text-blue-600 disabled:opacity-50"
-                        >
-                          {sendingToGoogle[item.resource!.id] ? (
-                            <Loader2 size={14} className="animate-spin" />
-                          ) : (
-                            <svg viewBox="0 0 87.3 78" width={14} height={12} fill="currentColor">
-                              <path d="M6.6 66.85l3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8H0c0 1.55.4 3.1 1.2 4.5l5.4 9.35z" fill="#0066DA"/>
-                              <path d="M43.65 25.15L29.9 1.35c-1.35.8-2.5 1.9-3.3 3.3L1.2 46.5c-.8 1.4-1.2 2.95-1.2 4.5h27.5l16.15-25.85z" fill="#00AC47"/>
-                              <path d="M73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5H59.8l6.3 11.5 7.45 12.3z" fill="#EA4335"/>
-                              <path d="M43.65 25.15L57.4 1.35C56.05.55 54.5 0 52.85 0H34.45c-1.65 0-3.2.55-4.55 1.35l13.75 23.8z" fill="#00832D"/>
-                              <path d="M59.8 53h27.5c0-1.55-.4-3.1-1.2-4.5L73.45 28.1c-.8-1.4-1.95-2.5-3.3-3.3L57.4 1.35 43.65 25.15l16.15 27.85z" fill="#2684FC"/>
-                              <path d="M27.5 53L13.75 76.8c1.35.8 2.9 1.2 4.55 1.2H69.1c1.65 0 3.2-.4 4.55-1.2L59.8 53H27.5z" fill="#FFBA00"/>
-                            </svg>
-                          )}
-                          {item.type === "slides" ? "Google Slides" : "Google Docs"}
-                        </button>
-                      )
-                    }
-                  </>
-                )}
-                {item.status === "error" && (
-                  <div className="flex items-center gap-1.5 text-xs text-red-500">
-                    <AlertCircle size={14} />
-                    Failed
-                  </div>
-                )}
-              </div>
+              {/* In-app content preview */}
+              {item.status === "complete" && item.resource && item.type !== "slides" && (
+                <div className="px-3 pb-2">
+                  <ResourceContentPreview
+                    resourceId={item.resource.id}
+                    resourceType={item.type}
+                  />
+                </div>
+              )}
             </div>
           );
         })}
